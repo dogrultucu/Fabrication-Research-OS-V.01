@@ -1,0 +1,6 @@
+{
+  "name": "Fabrication Research OS",
+  "description": "Scientific research platform for adaptive robotic additive manufacturing, feedforward planning, and checkpoint recalibration (IAAC MRAC 2026–2027).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
