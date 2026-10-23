@@ -122,18 +122,59 @@ export const PHASE_A_INTEGRATION_ADAPTERS: {
       params: ProcessParameterSet,
       checkpointLayer: number
     ): string {
+      const safeLayer = Number.isFinite(checkpointLayer)
+        ? Math.max(0, Math.round(checkpointLayer))
+        : 0;
+      const rawSpeed = Number(params.printSpeedMmPerSec);
+      const clampedSpeed = Number.isFinite(rawSpeed)
+        ? Math.max(1, Math.min(250, rawSpeed))
+        : 20;
+      const rawLayerH = Number(params.layerHeightMm);
+      const clampedLayerH = Number.isFinite(rawLayerH)
+        ? Math.max(0.1, Math.min(50, rawLayerH))
+        : 2.0;
+      const rawWidth = Number(params.targetBeadWidthMm);
+      const clampedWidth = Number.isFinite(rawWidth)
+        ? Math.max(0.2, Math.min(100, rawWidth))
+        : 4.0;
+      const rawFlow = Number(params.relativeFlowPercent);
+      const clampedFlow = Number.isFinite(rawFlow)
+        ? Math.max(0, Math.min(300, rawFlow))
+        : 100;
+      const wasClamped =
+        clampedSpeed !== rawSpeed ||
+        clampedLayerH !== rawLayerH ||
+        clampedWidth !== rawWidth ||
+        clampedFlow !== rawFlow;
+
       return [
-        `! --- Fabrication Research OS v0.1.0 Offline Parameter Snippet ---`,
-        `! Target Checkpoint Layer: ${checkpointLayer}`,
+        `! ============================================================================`,
+        `! FABRICATION RESEARCH OS v0.1.0 — OFFLINE PARAMETER SNIPPET`,
+        `! SAFETY WARNING: SIMULATION & HUMAN OPERATOR VALIDATION REQUIRED`,
+        `! DO NOT EXECUTE DIRECTLY ON PHYSICAL ROBOT WITHOUT ROBOTSTUDIO VERIFICATION`,
+        `! ============================================================================`,
+        `! Target Checkpoint Layer: ${safeLayer}`,
         `! Parameter Source: ${params.parameterSource}`,
-        `! NOTE: Offline configuration snippet only. Verify bounds in RobotStudio before execution.`,
-        ` PERS speeddata vPrintCheckpoint := [${params.printSpeedMmPerSec}, 50, 5000, 1000];`,
-        ` PERS num nLayerHeightMm := ${params.layerHeightMm};`,
-        ` PERS num nTargetBeadWidthMm := ${params.targetBeadWidthMm};`,
-        ` PERS num nRelativeFlowPct := ${params.relativeFlowPercent};`,
-        params.volumetricFlowValue !== null
-          ? ` ! Physical Volumetric Rate: ${params.volumetricFlowValue} ${params.volumetricFlowUnit}`
-          : ` ! Physical Volumetric Rate: Not characterized`,
+        wasClamped
+          ? `! BOUNDARY CLAMPING APPLIED: Input parameters were clamped to safe physical bounds.`
+          : `! Bounds Verification: Parameters within nominal physical limits [1..250 mm/s].`,
+        `! Required Pre-Flight Checks:`,
+        `!   1. Verify workobject (wobj) and tool center point (TCP) calibration.`,
+        `!   2. Simulate collision-free trajectory and singularity clearance in RobotStudio.`,
+        `!   3. Confirm extruder pressure/temperature interlocks before enabling flow.`,
+        `!`,
+        `! --- MODULE DATA DECLARATIONS (Place in Module Header) ---`,
+        `PERS speeddata vPrintCheckpoint := [${clampedSpeed}, 50, 5000, 1000];`,
+        `PERS num nLayerHeightMm := ${clampedLayerH};`,
+        `PERS num nTargetBeadWidthMm := ${clampedWidth};`,
+        `PERS num nRelativeFlowPct := ${clampedFlow};`,
+        params.volumetricFlowValue !== null &&
+        Number.isFinite(params.volumetricFlowValue)
+          ? `! Physical Volumetric Rate: ${params.volumetricFlowValue} ${params.volumetricFlowUnit}`
+          : `! Physical Volumetric Rate: Not characterized`,
+        `!`,
+        `! --- CHECKPOINT PROCEDURE INSTRUCTION (Place inside PROC) ---`,
+        `! Stop; ! Mandatory human operator checkpoint verification stop`,
       ].join('\n');
     },
   },

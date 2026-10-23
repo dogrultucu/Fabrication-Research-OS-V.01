@@ -1,0 +1,1856 @@
+# FABRICATION RESEARCH OS
+## MASTER DEVELOPMENT PROMPT — v0.1.1
+### Ceramic Node Research Workflow, Feature-Level Metrology & Scientific Experimentation
+
+---
+
+# 0. CRITICAL INSTRUCTION — EXTEND THE EXISTING APPLICATION
+
+You are continuing development of the existing **Fabrication Research OS v0.1.0 — Phase A**.
+
+This is an incremental product and research-workflow upgrade, NOT a new application.
+
+**Do not recreate the project from scratch.**
+
+Before making modifications:
+
+1. Inspect the existing source code, component structure, scientific domain models, database schema, repository abstraction, routes, tests, and documentation.
+2. Identify which functionality is actually implemented versus planned or partially implemented.
+3. Preserve the existing working application.
+4. Preserve the existing scientific records, identifiers, and relationships.
+5. Introduce backward-compatible schema migrations where necessary.
+6. Extend existing modules instead of creating duplicate modules.
+7. Retain the established professional dark scientific workstation design.
+8. Preserve existing clay, ceramic, polymer, and custom material support.
+9. Preserve general-purpose additive manufacturing experiments alongside the new ceramic-node workflow.
+10. Verify existing functionality after implementing changes.
+
+**Do not destroy, clear, regenerate, or overwrite existing IndexedDB research records.**
+
+Do not remove established functionality merely because a new workflow is being introduced.
+
+If a proposed improvement requires structural changes, choose the smallest maintainable modification that preserves compatibility with the current implementation.
+
+The existing six-module structure remains:
+
+1. Experiment Lab
+2. Quality Inspector
+3. Calibration Studio
+4. Process Explorer
+5. Research Library
+6. Industry Metrics
+
+The application name remains **Fabrication Research OS**.
+
+Target version: **v0.1.1 — Ceramic Node Research Workflow**.
+
+---
+
+# 1. YOUR ROLE
+
+Act simultaneously as:
+
+- Senior full-stack software engineer.
+- Scientific software architect.
+- Computational fabrication researcher.
+- Robotic additive manufacturing specialist.
+- Experimental design and metrology specialist.
+- Research data systems architect.
+- Professional engineering UX/UI designer.
+
+Your responsibility is to create a technically reliable research platform that supports actual scientific experimentation.
+
+Prioritize:
+
+**Scientific validity > Data integrity > Functional reliability > Research usability > Visual sophistication.**
+
+Do not substitute visually impressive simulations for measured experimental evidence.
+
+Do not generate fake precision, fake hardware connections, or fake scientific conclusions.
+
+---
+
+# 2. UPDATED RESEARCH CONTEXT
+
+## 2.1 Existing research direction
+
+The research is conducted within IAAC's Master in Robotics and Advanced Construction (MRAC 2026–2027).
+
+The established research topic is:
+
+**Feedforward Planning & Checkpoint Recalibration in Robotic Additive Manufacturing.**
+
+The research investigates how fabrication systems can maintain manufacturing quality under material and process variability through:
+
+- Structured process planning.
+- Geometric observation.
+- Measurement-based assessment.
+- Material and process characterization.
+- Controlled experiments.
+- Parameter recalibration.
+- Verification.
+- Comparison against conventional manufacturing baselines.
+
+The research may use industrial robotic extrusion and smaller desktop manufacturing systems.
+
+The industrial collaboration context includes La Máquina.
+
+## 2.2 Updated physical research demonstrator
+
+The research now uses small-scale **robotically extruded ceramic nodes / architectural connection components** as a potential primary physical demonstrator.
+
+These nodes contain geometric features relevant to architectural assembly, such as:
+
+- Connection sockets.
+- Insertion interfaces.
+- Branching geometries.
+- Joint axes.
+- Mating surfaces.
+- Localized dimensional tolerances.
+
+The exact node geometry is still under development.
+
+**Do not assume a final three-branch connector, spherical node, cylindrical socket system, structural load path, or specific assembly configuration has already been approved.**
+
+The software must support different node configurations through editable definitions.
+
+The node serves as an experimental demonstrator, not as proof of structural performance.
+
+## 2.3 Working research question
+
+Use the following as an editable working research question:
+
+"Can measurement-informed feedforward planning and bounded recalibration improve the dimensional and assembly accuracy of robotically extruded ceramic nodes under material and process variability?"
+
+This is a WORKING research question.
+
+Do not automatically overwrite the submitted thesis abstract, previously saved research questions, or existing approved thesis statements.
+
+Maintain separate fields for:
+
+- Submitted Abstract.
+- Working Research Question.
+- Research Hypotheses.
+- Experimental Objectives.
+- Scientific Evaluation Criteria.
+
+Retain revision history or provenance for substantial research-definition changes where supported.
+
+## 2.4 Scientific objective
+
+The system should help determine whether controlled parameter planning and recalibration produce measurable improvements over fixed-parameter manufacturing.
+
+It should NOT assume recalibration is always necessary or superior.
+
+Research outcomes may support:
+
+- Feedforward parameter planning.
+- Material batch characterization.
+- Process qualification.
+- Operator-assisted recalibration.
+- Checkpoint recalibration.
+- A combination of these strategies.
+
+Automated checkpoint feedback is not a mandatory outcome.
+
+The methodology must remain open to the strongest evidence.
+
+---
+
+# 3. FUNDAMENTAL PRODUCT DESIGN PRINCIPLE
+
+The current application already provides an experiment management and scientific analysis foundation.
+
+The new functionality must transform it into a research tool capable of answering three connected questions:
+
+### Question A — Process
+
+What happened during fabrication?
+
+Examples:
+
+- Printing speed.
+- Extrusion flow.
+- Material batch.
+- Nozzle geometry.
+- Toolpath characteristics.
+- Process interruptions.
+- Material-state changes.
+- Bead dimensional deviations.
+
+### Question B — Geometry
+
+What happened to the fabricated component?
+
+Examples:
+
+- Socket diameter errors.
+- Socket ovality.
+- Joint-axis deviations.
+- Connection-center displacement.
+- Insertion depth deviation.
+- Localized distortion.
+- Drying or firing shrinkage.
+
+### Question C — Assembly
+
+Can the fabricated component perform its intended geometric connection function?
+
+Examples:
+
+- Mating-part compatibility.
+- Clearance.
+- Alignment.
+- Insertion feasibility.
+- Assembly acceptance.
+- Rework requirements.
+
+The software must connect these questions through experiment IDs, specimen IDs, feature IDs, manufacturing conditions, and measurement provenance.
+
+**Do not treat bead accuracy and assembly accuracy as interchangeable measurements.**
+
+Bead quality is a process-level indicator.
+
+Connection geometry and assembly fit are component-level outcomes.
+
+---
+
+# 4. PRESERVE AND EXTEND THE EXISTING ARCHITECTURE
+
+Maintain the established technology foundation where actually present:
+
+- React.
+- TypeScript.
+- Tailwind CSS.
+- Recharts.
+- Zod validation.
+- IndexedDB.
+- Repository abstraction.
+- Pure TypeScript scientific calculation functions.
+- JSON and CSV import/export.
+- Existing 13-entity scientific data model.
+
+Do not unnecessarily replace dependencies or refactor unrelated functionality.
+
+Preserve:
+
+- Existing experiment records.
+- Material profiles.
+- Hardware profiles.
+- Measurements.
+- Calibration sessions and trials.
+- Process observations.
+- Research references.
+- Production metrics.
+- Audit history.
+- Existing data-management capabilities.
+
+New node-specific functionality should be integrated through a small number of well-defined domain extensions.
+
+Avoid adding a separate database, redundant experiment registry, or independent node-data subsystem.
+
+## 4.1 Data model extension strategy
+
+Inspect the actual existing 13-entity schema before deciding which additional entities are necessary.
+
+Preferred minimal additions:
+
+**NodeDesign**
+
+Stores the nominal parametric design and its revision.
+
+**NodeFeatureDefinition**
+
+Stores individually identifiable geometric features belonging to a node design.
+
+**Specimen**
+
+Represents one physical manufactured part.
+
+**AssemblyVerification**
+
+Stores direct assembly-fit evaluation and its evidence.
+
+Reuse and extend existing Experiment, Measurement, ProcessParameterSet, ProcessObservation, CalibrationTrial, and FileDatasetMetadata entities.
+
+Do not introduce additional entities unless required by a clear relationship or integrity constraint.
+
+If equivalent structures already exist, reuse them rather than duplicating them.
+
+All new entities must be incorporated into:
+
+- Schema validation.
+- Repository methods.
+- IndexedDB migration.
+- Export/import.
+- Full project backup/restore.
+- Audit history.
+- Relationship validation.
+- Automated tests.
+
+Never hardcode a new total entity count without checking the actual implementation.
+
+---
+
+# 5. NODE DESIGN & SPECIMEN DATA MODEL
+
+## 5.1 NodeDesign
+
+Create a configurable node-design definition containing:
+
+- id
+- projectId
+- designCode
+- designName
+- geometryVersion
+- geometryDescription
+- geometrySource
+- nominalGeometryFileReference
+- coordinateSystem
+- unitSystem
+- intendedMaterialType
+- notes
+- createdAt
+- updatedAt
+
+Optional geometry source types:
+
+- Rhino/Grasshopper
+- CAD import
+- Parametric JSON
+- Manual definition
+- Other
+
+A NodeDesign is not necessarily a complete 3D mesh.
+
+The initial implementation should support metadata and feature definitions without requiring advanced 3D geometry parsing.
+
+Allow a geometry file to be associated with the design without claiming it has been geometrically analyzed.
+
+## 5.2 NodeFeatureDefinition
+
+A single node may contain multiple geometrically important features.
+
+Each feature requires a stable identifier.
+
+Suggested fields:
+
+- id
+- nodeDesignId
+- featureCode
+- featureName
+- featureType
+- coordinateFrame
+- nominalPosition
+- nominalOrientation
+- nominalDimensions
+- geometricToleranceDefinition
+- measurementMethod
+- assemblyCritical
+- notes
+
+Feature types should be extensible and may include:
+
+- Socket
+- Joint Axis
+- Opening
+- Mating Surface
+- Insertion Interface
+- Reference Datum
+- Custom Feature
+
+Do not assume all nodes contain exactly three sockets.
+
+The user must be able to add, remove, rename, and configure individual feature definitions.
+
+Feature definitions must reference a specific geometry revision.
+
+A revised node design should not silently change the historical definitions used to evaluate previously manufactured specimens.
+
+## 5.3 Specimen
+
+A Specimen represents ONE physical printed object.
+
+This is important because a single experimental protocol may produce multiple physical parts.
+
+Required fields:
+
+- id
+- specimenCode
+- experimentId
+- nodeDesignId
+- geometryVersion
+- materialProfileId
+- materialBatchIdentifier
+- hardwareProfileId
+- fabricationRunIdentifier
+- fabricationTimestamp
+- processParameterSetId
+- currentPhysicalStage
+- specimenStatus
+- notes
+- createdAt
+- updatedAt
+
+Allow multiple specimens to reference one experiment.
+
+Allow multiple measurements to reference one specimen.
+
+Support a clearly traceable relationship:
+
+Project → Experiment → Specimen → Feature → Measurement.
+
+A calibration trial may refer to the experiment and its associated specimen.
+
+Do not force a one-to-one relationship between experiment and manufactured part.
+
+## 5.4 Specimen identification
+
+Provide human-readable specimen codes.
+
+Example:
+
+EXP-001 / NODE-A-V01 / S01
+
+The exact naming convention should be editable or generated consistently.
+
+Maintain immutable internal UUID references independently from human-readable codes.
+
+---
+
+# 6. CERAMIC PHYSICAL STATE TRACKING
+
+One of the most important new requirements is to distinguish the physical condition of a ceramic specimen when it is measured.
+
+Support these stages:
+
+**GREEN**
+Freshly printed / unfired ceramic.
+
+**DRY**
+Dried ceramic before firing.
+
+**FIRED**
+Ceramic after firing.
+
+Also allow:
+
+- Unknown.
+- Custom stage if scientifically justified.
+
+## 6.1 Stage-specific measurements
+
+Every geometric measurement must specify the fabrication/material stage in which it was taken.
+
+A single specimen may have measurements from multiple stages.
+
+Example:
+
+Specimen S01:
+
+- GREEN socket diameter.
+- DRY socket diameter.
+- FIRED socket diameter.
+
+Do not automatically assume all stages have been performed.
+
+A green specimen may never be fired.
+
+A stage without measurements must display "Not Measured", not zero.
+
+## 6.2 Stage-specific nominal geometry
+
+Distinguish between:
+
+1. Original CAD design geometry.
+2. Intended or compensated manufacturing geometry.
+3. Target geometry for a particular physical stage.
+4. Measured geometry in that physical stage.
+
+Allow stage-specific nominal values and tolerances.
+
+For example, a green-state socket diameter may intentionally differ from the final target diameter to compensate for expected shrinkage.
+
+Do not evaluate a green-state measurement against a fired-state target without explicitly defining the comparison.
+
+Keep comparison provenance clear.
+
+## 6.3 Shrinkage analysis
+
+Support stage-to-stage dimensional change where the same feature has compatible measurements across stages.
+
+Example:
+
+Linear shrinkage from GREEN to DRY:
+
+Shrinkage (%) = ((Green Dimension - Dry Dimension) / Green Dimension) × 100
+
+Only calculate this when:
+
+- Both measurements exist.
+- Both represent the same specimen.
+- Both represent the same geometric feature and measurement definition.
+- Units are compatible.
+- The reference dimension is valid and nonzero.
+
+Also support:
+
+- GREEN → FIRED total dimensional change.
+- DRY → FIRED dimensional change.
+
+Do not assume shrinkage is uniform or isotropic.
+
+The application must allow different behavior along different directions.
+
+Do not apply an automatic universal clay shrinkage coefficient.
+
+Shrinkage compensation should remain a research hypothesis or experimentally justified parameter, not an assumed material constant.
+
+---
+
+# 7. MODULE 01 — EXPERIMENT LAB UPDATE
+
+Extend the current Experiment Lab rather than rebuilding it.
+
+## 7.1 Experiment types
+
+Maintain existing general-purpose experimental workflows.
+
+Introduce an optional **Research Workflow Type**:
+
+- General Extrusion Experiment.
+- Ceramic Node Fabrication.
+- Material Characterization.
+- Calibration Experiment.
+- Custom.
+
+Selecting Ceramic Node Fabrication should reveal relevant node-specific information without making it mandatory for other experiment types.
+
+## 7.2 New Experiment Wizard
+
+Preserve the current wizard where possible.
+
+Extend relevant steps to support:
+
+- Research objective.
+- Experiment group.
+- Node design.
+- Geometry version.
+- Material profile.
+- Material batch.
+- Hardware profile.
+- Manufacturing parameters.
+- Planned specimens.
+- Measurement protocol.
+- Feature-specific tolerance requirements.
+
+Do not create an unnecessarily long wizard.
+
+Group related inputs logically.
+
+The user must be able to create an experiment without having every advanced parameter available.
+
+Incomplete configuration must be clearly identified rather than silently fabricated.
+
+## 7.3 Experiment groups
+
+Support research classifications:
+
+- Nominal Baseline.
+- Perturbed Fixed-Parameter Control.
+- Material / Process Characterization.
+- Calibration Trial.
+- Verification Trial.
+- Other.
+
+These classifications are important for future scientific comparisons.
+
+They should be editable rather than permanently hardcoded into experimental logic.
+
+## 7.4 Specimen registry
+
+Inside each experiment, provide a dedicated **Specimens** section.
+
+Display:
+
+- Specimen ID.
+- Node design.
+- Geometry version.
+- Material batch.
+- Parameter set.
+- Fabrication date.
+- Current physical stage.
+- Inspection completion.
+- Assembly verification status.
+
+Allow the user to create multiple specimens under one experiment.
+
+Each specimen should have a detail page or panel.
+
+A user should be able to open a specimen directly in Quality Inspector.
+
+## 7.5 Experiment planning
+
+Create a simple experimental group planner.
+
+It should help define:
+
+- Number of planned specimens.
+- Experimental group.
+- Variable parameters.
+- Fixed parameters.
+- Target outcome.
+- Measurement procedure.
+
+Do not automatically assign statistical power or claim a sufficient experimental sample size.
+
+A preliminary pilot template may demonstrate a 10-specimen session with:
+
+- 3 nominal baseline specimens.
+- 2 perturbed specimens.
+- 2 calibration specimens.
+- 3 verification specimens.
+
+Label this explicitly as an editable pilot planning example, NOT a validated experimental design or actual result.
+
+Do not automatically populate real experiment records with this example.
+
+Robot operating time, setup time, cleaning, material preparation, and inspection overhead should remain user-entered or experimentally measured.
+
+---
+
+# 8. MODULE 02 — QUALITY INSPECTOR UPDATE
+
+This is the primary UI/UX and scientific feature upgrade.
+
+Preserve existing bead measurements and numerical analysis.
+
+Introduce two clearly separated inspection modes:
+
+**A. Extrusion Inspection**
+
+Existing process-level geometry measurements.
+
+**B. Node / Joint Inspection**
+
+Component-level and assembly-critical geometry measurements.
+
+The user should be able to switch between these modes without changing the selected experiment or losing context.
+
+## 8.1 Extrusion Inspection
+
+Preserve:
+
+- Bead width.
+- Bead height.
+- Layer deviation.
+- XYZ residual.
+- Surface deviation.
+- Existing numerical statistics.
+- Tolerance evaluation.
+- Measurement CSV import/export.
+
+Keep schematic cross-section visualizations distinct from measured profile geometry.
+
+## 8.2 Node / Joint Inspection
+
+Create a professional feature-level inspection workspace.
+
+Suggested layout:
+
+**Left panel**
+
+- Selected experiment.
+- Selected specimen.
+- Selected geometry revision.
+- Physical stage selector.
+- Feature tree.
+
+**Center panel**
+
+- Node schematic.
+- Feature highlights.
+- Nominal versus measured geometry indicators.
+- Selected joint information.
+
+**Right panel**
+
+- Feature-specific measurements.
+- Target values.
+- Actual values.
+- Signed errors.
+- Tolerance limits.
+- Measurement source.
+- Verification status.
+
+**Bottom panel**
+
+- Measurement table.
+- Deviation charts.
+- Inspection history.
+- Notes and source files.
+
+Use the current scientific workstation design language.
+
+## 8.3 Required measurement types
+
+Support the following extensible geometric metrics:
+
+**Socket / Opening**
+
+- Nominal diameter.
+- Measured diameter.
+- Diameter deviation.
+- Ovality, if supported by an explicitly defined measurement method.
+- Insertion depth.
+- Opening position.
+
+**Joint Orientation**
+
+- Nominal axis direction.
+- Measured axis direction.
+- Angular deviation in degrees.
+- Axis alignment.
+
+**Position**
+
+- Nominal X/Y/Z.
+- Measured X/Y/Z.
+- Signed component residuals.
+- Euclidean positional residual, when coordinate frames and units are consistent.
+
+**Surface**
+
+- Local surface deviation.
+- Interface flatness where measurable.
+- Custom geometric error metrics.
+
+**Assembly**
+
+- Mating component reference.
+- Intended clearance.
+- Calculated clearance when both mating dimensions are available.
+- Actual physical fit test.
+- Pass/Fail/Not Tested.
+
+Avoid creating automatic engineering conclusions from insufficient data.
+
+## 8.4 Measurement methodology
+
+Each recorded measurement must include:
+
+- Specimen ID.
+- Feature ID.
+- Physical stage.
+- Measurement type.
+- Value.
+- Unit.
+- Target value.
+- Tolerance.
+- Measurement source.
+- Measurement method.
+- Timestamp.
+- Measurement uncertainty where known.
+- Coordinate frame where applicable.
+- Source file reference when applicable.
+
+Potential measurement methods:
+
+- Digital caliper.
+- Manual gauge.
+- Calibrated camera.
+- Calibrated RGB-D measurement.
+- Imported CAD comparison.
+- Computed numerical result.
+- Other.
+
+Do not treat camera-derived dimensions as verified simply because an image was uploaded.
+
+Calibration status and acquisition metadata must be considered when determining whether a measurement is suitable for dimensional evaluation.
+
+## 8.5 Tolerance evaluation
+
+Use explicit feature-level acceptance criteria.
+
+For symmetric scalar tolerances:
+
+Error = Measured Value - Target Value
+
+Pass if:
+
+|Error| ≤ Tolerance.
+
+For asymmetric tolerances, use explicit minimum and maximum permitted values.
+
+A measurement with missing or invalid data must never return PASS.
+
+A missing tolerance must not be silently assumed.
+
+Preserve the tolerance definition used during the original evaluation.
+
+## 8.6 Node visualization
+
+Build a useful interactive schematic inspection view.
+
+Important distinction:
+
+**Schematic Geometry**
+A diagram derived from manually defined feature information or a simplified representation.
+
+**Measured Geometry**
+Actual geometry derived from validated imported scans, point clouds, or geometric measurements.
+
+The application must visibly distinguish them.
+
+Do not automatically reconstruct a full 3D node from a few scalar measurements.
+
+For v0.1.1, prioritize a clean, interactive 2D or simplified geometric schematic with:
+
+- Individually selectable features.
+- Feature ID labels.
+- Stage selector.
+- Measurement highlighting.
+- Nominal/measured values.
+- Deviation indicators.
+
+Make the component extensible for a future genuine 3D geometry viewer.
+
+Do not add a complex Three.js rendering engine unless it can be integrated reliably without compromising existing functionality.
+
+## 8.7 Node acceptance
+
+Introduce a configurable component-level acceptance summary.
+
+Example conditions:
+
+- Required dimensional measurements available.
+- Required geometry features within tolerance.
+- Assembly verification completed where required.
+- No unresolved critical inspection failure.
+
+Allow the user to define whether assembly verification is required for final acceptance.
+
+Distinguish:
+
+- Inspection Pending.
+- Insufficient Data.
+- Geometrically Accepted.
+- Geometrically Rejected.
+- Assembly Accepted.
+- Assembly Rejected.
+
+Do not label a specimen "Assembly Accepted" based only on dimensional measurements unless explicitly defined, justified fit criteria have been evaluated and the result is identified as calculated rather than physically tested.
+
+A direct physical assembly test should be recorded separately.
+
+---
+
+# 9. ASSEMBLY VERIFICATION WORKFLOW
+
+Add assembly verification within Quality Inspector.
+
+Do not create a seventh top-level application module.
+
+## 9.1 Assembly test records
+
+Store:
+
+- Specimen ID.
+- Node design and revision.
+- Connected / mating component ID.
+- Relevant feature IDs.
+- Assembly test date.
+- Assembly method.
+- Measured clearance where available.
+- Insertion depth where available.
+- Alignment result.
+- Physical fit result.
+- Rework required.
+- Operator notes.
+- Evidence files.
+
+Possible physical fit classifications:
+
+- Pass.
+- Fail.
+- Conditional Pass.
+- Not Tested.
+
+## 9.2 Calculated clearance
+
+When compatible mating dimensions exist, calculate signed diametral clearance using the explicitly defined convention:
+
+Clearance = Internal Feature Diameter - Mating External Diameter.
+
+Positive values indicate dimensional clearance.
+
+Negative values indicate interference.
+
+Do not automatically translate positive clearance into confirmed assembly success.
+
+Consider measurement uncertainty and geometric limitations.
+
+If mating measurements are unavailable, do not fabricate clearance values.
+
+## 9.3 Assembly outcome
+
+Provide a clear distinction between:
+
+- Predicted fit based on dimensional calculations.
+- Measured geometric compatibility.
+- Actual physical assembly test.
+
+Actual physical verification must not be inferred from a software calculation.
+
+---
+
+# 10. MODULE 03 — CALIBRATION STUDIO UPDATE
+
+Preserve the existing calibration workflow.
+
+Extend it so calibration sessions can be evaluated against node-level geometric and assembly outcomes.
+
+## 10.1 Calibration objectives
+
+Allow calibration sessions to target:
+
+- Bead width error.
+- Bead height error.
+- Layer deviation.
+- Socket dimensional error.
+- Joint angular deviation.
+- Component acceptance rate.
+- Other configured quality metrics.
+
+Do not assume that changing printing speed or extrusion flow directly and predictably corrects all node geometry errors.
+
+The relationship between process parameters and final geometry must be experimentally demonstrated.
+
+## 10.2 Parameter selection
+
+Continue supporting:
+
+- Print speed.
+- Relative extrusion flow.
+- Physical volumetric flow.
+- Layer height.
+- Nozzle geometry.
+- Tool orientation.
+- Material-specific process parameters.
+
+Preserve explicit parameter units and bounds.
+
+## 10.3 Calibration trial provenance
+
+For every trial, record:
+
+- Reference experiment.
+- Associated specimens.
+- Material batch.
+- Changed parameters.
+- Fixed parameters.
+- Planned candidate.
+- Executed candidate.
+- Measured outcomes.
+- Physical measurement stage.
+- Acceptance result.
+
+Distinguish:
+
+- Theoretical candidate.
+- Empirically tested candidate.
+- Verified calibration result.
+
+## 10.4 Checkpoint workflow
+
+Support a structured research sequence:
+
+1. Establish baseline.
+2. Introduce or observe a controlled perturbation.
+3. Record deviations.
+4. Create a calibration session.
+5. Define one or more bounded candidate parameter sets.
+6. Conduct physical trial.
+7. Import actual measurements.
+8. Compare results against established criteria.
+9. Identify a candidate for verification.
+10. Produce additional verification specimens.
+11. Compare verified outcomes against baseline and perturbed controls.
+
+This must be an experimental workflow, not an automatically executing robot-control loop.
+
+No parameter proposal may be marked successful without measured evidence.
+
+Avoid claiming that the system has identified the physical cause of a deviation based only on geometric correlation.
+
+## 10.5 Scientific comparison
+
+Provide comparisons between:
+
+- Nominal baseline.
+- Perturbed fixed-parameter control.
+- Manual recalibration.
+- Proposed recalibration approach.
+
+Where data exists, report:
+
+- Trials required.
+- Absolute geometric error.
+- Tolerance compliance.
+- Accepted specimen ratio.
+- Total calibration time.
+- Total fabrication time.
+
+Where data is insufficient, explain that no scientifically defensible conclusion can yet be drawn.
+
+Do not force Bayesian Optimization or AI-based prediction into this version.
+
+---
+
+# 11. MODULE 04 — PROCESS EXPLORER UPDATE
+
+Extend the current time-series and layer analysis system with specimen-aware and event-aware workflows.
+
+## 11.1 Traceability
+
+Process observations should be associated with:
+
+- Experiment ID.
+- Fabrication run ID.
+- Specimen ID where applicable.
+- Material batch.
+- Parameter set.
+- Time source.
+- Toolpath segment or layer when available.
+
+## 11.2 Event annotation
+
+Support these event categories:
+
+- Fabrication Start.
+- Fabrication End.
+- Material Batch Change.
+- Material Preparation.
+- Process Interruption.
+- Checkpoint Inspection.
+- Parameter Adjustment.
+- Calibration Trial.
+- Process Anomaly.
+- Custom Event.
+
+Allow manually entered events and imported events.
+
+Never claim an event was automatically detected unless an actual validated detection algorithm produced it.
+
+## 11.3 Process-to-quality navigation
+
+A user inspecting a specimen should be able to navigate to its associated process observations.
+
+A user viewing an event in Process Explorer should be able to open related experiment and specimen records.
+
+Use explicit links rather than copying data into multiple unrelated stores.
+
+## 11.4 Data synchronization
+
+Preserve existing clock synchronization and coordinate-frame checks.
+
+Do not visually imply that independent time streams are synchronized unless their alignment has been established.
+
+Support explicit unknown synchronization status.
+
+---
+
+# 12. MODULE 05 — RESEARCH LIBRARY UPDATE
+
+Extend the existing research library to support the ceramic-node investigation.
+
+Suggested research categories:
+
+- Robotic Clay Extrusion.
+- Ceramic Additive Manufacturing.
+- Material-State Characterization.
+- Geometric Metrology.
+- RGB-D and Optical Inspection.
+- Feedforward Process Planning.
+- Checkpoint Recalibration.
+- Adaptive Manufacturing.
+- Ceramic Shrinkage and Distortion.
+- Dimensional Tolerancing.
+- Architectural Nodes and Connections.
+- Design for Assembly.
+- Manufacturing Quality and Process Capability.
+
+Allow references to be linked to:
+
+- Research questions.
+- Experiment protocols.
+- Material characterization methods.
+- Measurement procedures.
+- Calibration methods.
+- Assembly acceptance criteria.
+
+Do not fabricate literature references or DOI metadata.
+
+Do not claim a paper establishes a finding without source-backed evidence.
+
+The research library should support the thesis methodology, not become a general AI chat application.
+
+---
+
+# 13. MODULE 06 — INDUSTRY METRICS UPDATE
+
+Extend existing manufacturing performance analysis to focus on actual accepted and usable output.
+
+## 13.1 New relevant production metrics
+
+Where data exists, calculate:
+
+- Total fabricated specimens.
+- Geometrically accepted specimens.
+- Assembly-verified accepted specimens.
+- Geometric rejection rate.
+- Assembly rejection rate.
+- Material waste.
+- Rework count.
+- Calibration trial count.
+- Calibration duration.
+- Production duration.
+- Time per accepted specimen.
+- Material per accepted specimen.
+- Total process time per accepted specimen.
+
+Distinguish:
+
+- Green-state acceptance.
+- Dry-state acceptance.
+- Fired-state acceptance.
+- Assembly acceptance.
+
+Do not count an accepted green-state specimen as a completed fired architectural product.
+
+## 13.2 Throughput metrics
+
+Support:
+
+Accepted Specimens per Robot Hour.
+
+Define robot-hour carefully.
+
+Distinguish active printing time from total booked cell time where the required records exist.
+
+Also distinguish fabrication-cell throughput from complete-process throughput including drying and firing.
+
+Do not combine these into one misleading productivity figure.
+
+## 13.3 Baseline comparison
+
+Compare verified experimental groups where applicable.
+
+For example:
+
+- Fixed Parameters.
+- Perturbed Fixed Parameters.
+- Manual Recalibration.
+- Proposed Checkpoint Recalibration.
+
+Present measurable differences without assuming the proposed method is superior.
+
+Do not fabricate production savings, industrial ROI, or time improvements.
+
+---
+
+# 14. PROPOSED USER INTERFACE UPDATES
+
+Retain the existing premium industrial research aesthetic.
+
+Preserve:
+
+- Dark graphite surfaces.
+- Restrained cyan highlights.
+- Scientific typography.
+- Dense readable data tables.
+- Clear units.
+- Compact navigation.
+- Existing sidebar structure.
+- Existing module routes.
+
+Do not introduce a radically different design system.
+
+## 14.1 Experiment Lab
+
+Add:
+
+- Research Workflow Type selector.
+- Node Design selector.
+- Geometry Version.
+- Specimens tab.
+- Experiment Group label.
+- Material Batch tracking.
+- Planned versus completed specimen count.
+
+## 14.2 Quality Inspector
+
+Add an inspection mode switch:
+
+**Extrusion | Node / Joint**
+
+For Node / Joint mode, create a structured scientific inspection workspace.
+
+Use a scalable layout:
+
+- Feature hierarchy.
+- Central inspection canvas.
+- Measurement properties.
+- Deviations.
+- Acceptance criteria.
+- Assembly verification.
+- Measurement history.
+
+## 14.3 Calibration Studio
+
+Add:
+
+- Target Metric selector.
+- Specimen-linked trial results.
+- Physical stage selection.
+- Geometric acceptance outcome.
+- Comparison between calibration and control groups.
+
+## 14.4 Process Explorer
+
+Add:
+
+- Specimen filter.
+- Event timeline.
+- Material batch change indicators.
+- Parameter adjustment markers.
+- Checkpoint markers.
+
+## 14.5 Industry Metrics
+
+Add:
+
+- Component Acceptance.
+- Assembly Verification.
+- Yield by Physical Stage.
+- Accepted Specimens per Hour.
+- Rework and Calibration Overhead.
+
+## 14.6 Navigation principles
+
+The active experiment and specimen context should remain consistent across relevant modules.
+
+Selecting a specimen in Experiment Lab should allow direct navigation to:
+
+- Quality Inspector.
+- Process Explorer.
+- Calibration trial records.
+- Industry Metrics.
+
+Do not implement conflicting local states that cause the selected specimen to unexpectedly change.
+
+---
+
+# 15. CSV / JSON DATA IMPORT AND EXPORT
+
+Extend the existing import/export capability without breaking old formats.
+
+## 15.1 Supported data structures
+
+Prepare schemas for:
+
+- Node designs.
+- Node feature definitions.
+- Specimens.
+- Stage-specific measurements.
+- Assembly verification.
+- Process events.
+- Calibration trial outcomes.
+
+All imported data must pass runtime validation.
+
+## 15.2 Suggested node measurement columns
+
+Support explicit mappings for:
+
+- experiment_id
+- specimen_id
+- node_design_id
+- geometry_version
+- feature_id
+- physical_stage
+- measurement_type
+- measured_value
+- target_value
+- tolerance_lower
+- tolerance_upper
+- unit
+- measurement_method
+- source_type
+- measurement_timestamp
+- coordinate_frame
+- uncertainty
+
+Not all columns must be mandatory for every measurement type.
+
+Use schema-specific validation and informative error messages.
+
+## 15.3 Backward compatibility
+
+Existing CSV and JSON formats must continue to work.
+
+If a previous dataset has no node-specific fields, classify it as a general experiment rather than fabricating node associations.
+
+Implement versioned imports and exports.
+
+Update full project backup and restore to include all new records and relationships.
+
+---
+
+# 16. DATA MIGRATION & PERSISTENCE — CRITICAL
+
+The current application uses an IndexedDB-based data repository.
+
+Before changing the schema:
+
+1. Inspect the existing database version.
+2. Inspect entity relationships.
+3. Identify existing migration logic.
+4. Define the new schema version.
+5. Implement non-destructive migrations.
+6. Preserve existing IDs and timestamps.
+7. Verify compatibility with existing experiment records.
+8. Include new records in export and restore.
+9. Verify sample dataset isolation.
+10. Test page reload persistence.
+
+Do not use database deletion and recreation as a migration strategy.
+
+Do not silently modify historical measurement semantics.
+
+Existing measurements without explicit physical-stage data should be classified as:
+
+**Stage Unknown**
+
+Do not automatically assume they were taken in GREEN state.
+
+Existing experiments without NodeDesign references must remain fully usable.
+
+Any future migration to SQLite or another backend must remain possible through the repository abstraction.
+
+---
+
+# 17. SYNTHETIC DATA POLICY
+
+Continue using the existing clean zero-state model.
+
+Do not automatically populate the production research database.
+
+Any synthetic examples must be isolated as sample fixtures.
+
+Extend the optional demo dataset to demonstrate:
+
+- A nominal ceramic node experiment.
+- Several specimens.
+- Multiple joint features.
+- Green-state dimensional measurements.
+- A controlled material/process perturbation example.
+- Calibration trial records.
+- Optional dry/fired measurements.
+- An assembly verification example.
+
+Every synthetic record must be clearly marked:
+
+**SYNTHETIC DEMO DATA — NOT EXPERIMENTAL EVIDENCE**
+
+Synthetic datasets must never be counted as research results.
+
+Sample data removal must never delete real experimental records.
+
+Do not generate fake citations or real-world equipment availability.
+
+---
+
+# 18. SCIENTIFIC COMPUTATION REQUIREMENTS
+
+Keep scientific calculations isolated from the user interface.
+
+Implement pure, testable functions for compatible measurements.
+
+Examples:
+
+- Signed dimensional error.
+- Absolute dimensional error.
+- Tolerance pass/fail.
+- Euclidean positional error.
+- Angular deviation between valid normalized axes.
+- Linear stage-to-stage shrinkage.
+- Basic diameter-based clearance.
+- Acceptance rate.
+- Time per accepted specimen.
+- Calibration trial count.
+
+Numerical calculations must validate:
+
+- Unit compatibility.
+- Reference geometry version.
+- Coordinate-frame consistency.
+- Valid dimensional quantities.
+- Nonzero denominators where applicable.
+- Missing-value conditions.
+- Stage compatibility.
+- Measurement source and uncertainty.
+
+Do not use Gemini or another language model to calculate deterministic physical measurements.
+
+AI-generated explanations may be added later, but must never overwrite verified numerical results.
+
+Do not generate process-capability indices without valid process-stability assumptions.
+
+---
+
+# 19. VALIDATION & ACCEPTANCE TESTS
+
+Do not declare v0.1.1 complete until the relevant tests have been executed.
+
+## Test A — Existing experiment preservation
+
+Create or load an existing general extrusion experiment.
+
+Verify it remains valid and editable after the upgrade.
+
+## Test B — IndexedDB migration
+
+Upgrade an existing v0.1.0 database.
+
+Verify no historical experiment, material profile, measurement, or calibration record is deleted.
+
+## Test C — Node design creation
+
+Create a NodeDesign with three example features.
+
+Save and reload the application.
+
+Verify all feature definitions persist.
+
+## Test D — Multiple specimens
+
+Create one experiment containing five specimens.
+
+Verify each specimen has an independent identity.
+
+Measurements from one specimen must not be attributed to another.
+
+## Test E — Feature-specific tolerance
+
+Given:
+
+Feature: Socket A
+
+Target diameter = 20.00 mm
+
+Measured diameter = 20.40 mm
+
+Allowed symmetric tolerance = ±0.50 mm
+
+Expected:
+
+Signed error = +0.40 mm.
+
+Absolute error = 0.40 mm.
+
+Result = PASS.
+
+## Test F — Out-of-tolerance result
+
+Target diameter = 20.00 mm.
+
+Measured diameter = 20.80 mm.
+
+Allowed tolerance = ±0.50 mm.
+
+Expected:
+
+Result = FAIL.
+
+## Test G — Stage compatibility
+
+A GREEN measurement must not silently be evaluated against a FIRED-only target.
+
+The application must show either a valid explicitly configured comparison or a missing/incompatible target warning.
+
+## Test H — Shrinkage calculation
+
+Same specimen, same geometric feature:
+
+GREEN diameter = 20.0 mm.
+
+DRY diameter = 18.8 mm.
+
+Expected GREEN-to-DRY linear shrinkage = 6.0%.
+
+Do not calculate shrinkage if the measurements refer to different specimens or features.
+
+## Test I — Assembly verification
+
+Create a specimen with passing dimensional inspection.
+
+Do not automatically mark it as physically assembly-verified.
+
+Record a separate physical assembly test.
+
+Verify the assembly status updates correctly.
+
+## Test J — Calibration trial association
+
+Create a calibration session with multiple trial specimens.
+
+Verify each trial correctly references its parameters, material batch, and measurement results.
+
+## Test K — CSV round-trip
+
+Export node measurement data.
+
+Re-import into a clean test dataset.
+
+Verify:
+
+- IDs.
+- Feature associations.
+- Units.
+- Stage labels.
+- Numerical values.
+- Measurement provenance.
+
+## Test L — Full backup/restore
+
+Export a complete project including node designs, specimens, features, measurements, and assembly records.
+
+Restore it.
+
+Verify referential integrity.
+
+## Test M — Demo isolation
+
+Load the sample node dataset.
+
+Create a real specimen.
+
+Remove sample data.
+
+Verify the real specimen remains untouched.
+
+## Test N — Legacy regression
+
+Run the existing Phase A tests.
+
+Verify Experiment Lab, numerical Quality Inspector, existing Calibration Studio functions, Research Library, Data Management, and Industry Metrics still work.
+
+## Test O — No false hardware claims
+
+Without physical camera or robot connectivity:
+
+- No live measurements may appear.
+- No robot may be displayed as connected unless verified.
+- No automatic scan-to-geometry result may be fabricated.
+
+Clearly distinguish automated tests from manual tests that still require human execution.
+
+Do not report a test as passed unless actually executed.
+
+---
+
+# 20. PERFORMANCE & RELIABILITY
+
+The application must remain responsive during normal research workflows.
+
+Prioritize:
+
+- Efficient data queries.
+- Lazy loading of large record collections where useful.
+- Stable component state.
+- Avoidance of unnecessary re-rendering.
+- Separation of raw files from measurement metadata.
+- Reasonable handling of growing time-series datasets.
+- Non-destructive database operations.
+
+Do not embed very large point-cloud datasets directly into ordinary IndexedDB entities.
+
+Maintain references to external data where appropriate.
+
+Prepare for future Python-based geometric processing without implementing it prematurely.
+
+---
+
+# 21. PREPARE THE PROJECT FOR LOCAL DEVELOPMENT
+
+The next major development phase will be performed locally using GitHub, VS Code, and Codex.
+
+Do not attempt a full desktop application conversion in this iteration.
+
+Instead, make the current codebase straightforward to transfer and run independently of Google AI Studio.
+
+Requirements:
+
+- Preserve conventional Vite/React project structure where supported.
+- Avoid dependencies on AI Studio-only runtime features.
+- Keep environment variables documented.
+- Do not hardcode Google-hosted endpoints.
+- Do not make Gemini a requirement for core application functionality.
+- Keep deterministic research operations independent from network access.
+- Make build and development commands explicit.
+- Ensure the repository contains the necessary source files and package manifests.
+- Exclude secrets and generated local data from source control.
+- Ensure a clean production build is possible.
+
+Add documentation covering:
+
+- Local development prerequisites.
+- Package installation.
+- Development server startup.
+- Production build.
+- Previewing a production build.
+- Current offline limitations.
+- IndexedDB data persistence.
+- Backup and restore.
+- Known environment-specific dependencies.
+
+Do not falsely claim the app is already installable as an offline PWA unless the actual service worker, asset caching, and offline behavior have been implemented and tested.
+
+Full offline PWA packaging and any future SQLite-based local persistence adapter are responsibilities for a later Codex phase.
+
+---
+
+# 22. DOCUMENTATION & HANDOFF
+
+Update existing documentation rather than replacing it.
+
+Maintain or update:
+
+**README.md**
+
+Installation, use, capabilities, current limitations.
+
+**ARCHITECTURE.md**
+
+Overall software architecture and module responsibilities.
+
+**DATA_SCHEMA.md**
+
+All canonical entities, relationships, version changes, and physical measurement semantics.
+
+**ROADMAP.md**
+
+Completed, planned, and deferred functionality.
+
+**CHANGELOG.md**
+
+Document the v0.1.0 → v0.1.1 changes.
+
+Create:
+
+**CERAMIC_NODE_WORKFLOW.md**
+
+Explain:
+
+- Node design registration.
+- Feature definition.
+- Specimen creation.
+- Fabrication-stage tracking.
+- Node inspection.
+- Assembly verification.
+- Calibration trials.
+- Experimental comparisons.
+
+Create:
+
+**MIGRATION_NOTES.md**
+
+Explain:
+
+- Existing schema version.
+- New schema version.
+- Added fields/entities.
+- Migration strategy.
+- Backward compatibility.
+- Backup risks.
+
+Create:
+
+**CODEX_HANDOFF.md**
+
+Prepare a technical handoff containing:
+
+- Current working architecture.
+- Important directories.
+- Development commands.
+- Scientific calculation functions.
+- Database migration system.
+- Import/export contracts.
+- Tests executed.
+- Known issues.
+- Pending manual verification.
+- Recommended next engineering tasks.
+
+Make the handoff accurate and concise enough for another coding agent to understand the project without rebuilding it.
+
+---
+
+# 23. STRICT SCOPE CONTROL
+
+The following features are OUT OF SCOPE for v0.1.1:
+
+- Direct ABB/KUKA robot control.
+- Live ROS2 integration.
+- Autonomous industrial robot execution.
+- Full 3D point-cloud registration.
+- Automatic RGB-D geometric reconstruction.
+- Robot motion planning.
+- Structural load analysis of node connections.
+- Finite element analysis.
+- Fully automated Bayesian Optimization.
+- Reinforcement Learning.
+- Material physics prediction.
+- Automatic clay rheology estimation.
+- Production-grade digital twin synchronization.
+- Cloud multi-user collaboration.
+- Full Electron desktop packaging.
+- Complete offline PWA installation workflow.
+
+Maintain interface compatibility for future integrations where practical, but do not implement fake versions of these features.
+
+Do not create a separate architectural node design application.
+
+Grasshopper/Rhino will remain responsible for primary parametric node geometry and toolpath generation.
+
+Fabrication Research OS is responsible for research records, inspection, experimental calibration, scientific analysis, and manufacturing evaluation.
+
+---
+
+# 24. IMPLEMENTATION ORDER
+
+Proceed in controlled stages.
+
+## Stage 1 — Inspect and protect
+
+- Inspect the current implementation.
+- Establish what is actually working.
+- Review current tests.
+- Identify database migration requirements.
+- Preserve legacy functionality.
+
+## Stage 2 — Scientific data extensions
+
+- NodeDesign.
+- NodeFeatureDefinition.
+- Specimen.
+- AssemblyVerification.
+- Stage-aware measurements.
+- Import/export support.
+- Database migration.
+
+## Stage 3 — Experiment Lab integration
+
+- Ceramic Node workflow type.
+- Node design selection.
+- Specimen registry.
+- Geometry revisions.
+- Experiment group classification.
+
+## Stage 4 — Quality Inspector
+
+- Extrusion / Node Inspection switching.
+- Feature-level measurements.
+- Stage-aware evaluation.
+- Node schematic.
+- Assembly verification.
+- Shrinkage evaluation.
+
+## Stage 5 — Cross-module integration
+
+- Calibration Studio specimen associations.
+- Process Explorer event and specimen links.
+- Industry Metrics acceptance categories.
+- Research Library updated categories.
+
+## Stage 6 — Validation
+
+- Scientific calculation tests.
+- Database migration tests.
+- Persistence tests.
+- Import/export tests.
+- Legacy regression tests.
+- Production build.
+
+## Stage 7 — Documentation
+
+- Updated technical documentation.
+- Migration notes.
+- Handoff documentation for Codex.
+
+If implementation scope becomes too large, prioritize complete and working functionality in Stages 1–4 over incomplete implementations across every module.
+
+All existing modules must remain accessible.
+
+---
+
+# 25. FINAL DELIVERABLE
+
+Deliver **Fabrication Research OS v0.1.1** as an incremental enhancement of the existing application.
+
+The result should provide:
+
+1. A functioning ceramic node research workflow.
+2. A configurable node and feature data model.
+3. Traceable physical specimens.
+4. Stage-aware geometric measurements.
+5. Feature-level quality evaluation.
+6. Assembly verification records.
+7. Existing experimental baseline and calibration functionality.
+8. Cross-module integration.
+9. Backward-compatible IndexedDB persistence.
+10. Verified scientific calculations.
+11. Working import/export and backup.
+12. An accurate CodeX handoff package.
+
+Preserve the established UI identity and technical architecture.
+
+**Most important success scenario:**
+
+A researcher must be able to:
+
+1. Create an experiment.
+2. Associate a node design and geometry revision.
+3. Register several fabricated specimens.
+4. Record material and process parameters.
+5. Add bead-level and joint-level measurements.
+6. Distinguish green, dry, and fired states.
+7. Evaluate geometry against appropriate tolerances.
+8. Record actual assembly verification.
+9. Compare calibration trials against baseline experiments.
+10. Export all research records without losing relationships.
+
+This workflow must use persistent actual records, not static mock data.
+
+Do not claim a scientific improvement without experimental evidence.
+
+Do not claim measurements were acquired from real hardware unless actual acquisition occurred.
+
+Do not claim that a schematic visualization is a geometric scan.
+
+**Build and verify this incremental upgrade now.**
+
+After implementation, provide a concise engineering report identifying:
+
+- Files changed.
+- Schema migrations applied.
+- Features implemented.
+- Tests actually executed.
+- Test results.
+- Known limitations.
+- Any manual verification still required.
+- Remaining tasks for the next Codex development phase.
+
+The goal is not to build the largest possible application.
+
+The goal is to establish a reliable scientific research system that can support real robotic ceramic-node fabrication experiments throughout the MRAC 2026–2027 thesis.

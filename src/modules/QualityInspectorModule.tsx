@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -83,6 +83,22 @@ export const QualityInspectorModule: React.FC = () => {
   const activeExp =
     experiments.find((e) => e.id === selectedExperimentId) || experiments[0];
 
+  useEffect(() => {
+    if (!activeExp) return;
+    const criterion = activeExp.evaluationCriteriaSnapshot.find(
+      (c) => c.measurementType === mType
+    );
+    if (criterion) {
+      setTargetVal(criterion.targetValue);
+      setToleranceVal(criterion.tolerancePlusMinus);
+      setUnitVal(criterion.unit);
+    } else if (mType === 'bead width') {
+      setTargetVal(activeExp.processParameters.targetBeadWidthMm);
+    } else if (mType === 'bead height') {
+      setTargetVal(activeExp.processParameters.layerHeightMm);
+    }
+  }, [activeExp, mType]);
+
   const expMeasurements = useMemo(() => {
     if (!activeExp) return [];
     return measurements.filter((m) => m.experimentId === activeExp.id);
@@ -112,7 +128,8 @@ export const QualityInspectorModule: React.FC = () => {
     e.preventDefault();
     if (!activeExp) return;
 
-    const isAi = sourceType === 'AI-Assisted Annotation';
+    const isUnverifiedSource =
+      sourceType === 'AI-Assisted Annotation' || sourceType === 'Computed';
     const newMeas: Measurement = {
       id: `meas-${Date.now()}`,
       experimentId: activeExp.id,
@@ -125,11 +142,11 @@ export const QualityInspectorModule: React.FC = () => {
       tolerance: Number(toleranceVal) > 0 ? Number(toleranceVal) : 0.45,
       timestamp: new Date().toISOString(),
       sourceType,
-      // Scientific safeguard: AI-generated estimates are NEVER silently stored as verified physical measurements
-      verifiedPhysicalMeasurement: !isAi,
+      // Scientific safeguard: AI-generated and Computed estimates are NEVER silently stored as verified physical measurements
+      verifiedPhysicalMeasurement: !isUnverifiedSource,
       profileGeometryType: 'Scalar Point Measurement (Schematic Only)',
       acquisitionMethod: acqMethod.trim(),
-      algorithmVersion: isAi ? 'ai-annotation-unverified' : 'manual-entry-v1',
+      algorithmVersion: isUnverifiedSource ? 'unverified-estimate-v1' : 'manual-entry-v1',
       coordinateFrame: coordFrame.trim() || 'wobjPrintTable_01',
       uncertaintyMetadata: {
         standardUncertainty: Number(uncertaintyVal),
@@ -139,11 +156,15 @@ export const QualityInspectorModule: React.FC = () => {
       isSampleFixture: false,
     };
 
-    await repository.saveMeasurement(newMeas, true);
+    const res = await repository.saveMeasurement(newMeas, true);
+    if (!res.ok) {
+      notifyToast(res.error || 'Failed to save measurement.');
+      return;
+    }
     await refreshWorkspace();
     notifyToast(
-      isAi
-        ? 'Logged AI-Assisted Annotation (Explicitly flagged as UNVERIFIED).'
+      isUnverifiedSource
+        ? `Logged ${sourceType} (Explicitly flagged as UNVERIFIED).`
         : `Logged verified physical measurement (${newMeas.measuredValue} ${newMeas.unit}).`
     );
   };
@@ -180,7 +201,14 @@ export const QualityInspectorModule: React.FC = () => {
       isSampleFixture: false,
     };
 
-    await repository.saveMeasurementsBatch(parsed.validMeasurements, fileMeta);
+    const batchRes = await repository.saveMeasurementsBatch(
+      parsed.validMeasurements,
+      fileMeta
+    );
+    if (!batchRes.ok) {
+      notifyToast(batchRes.error || 'CSV batch save failed.');
+      return;
+    }
     await refreshWorkspace();
     notifyToast(
       `Imported ${parsed.validMeasurements.length} measurement(s) from ${file.name} (${checksum.slice(0, 15)}...)`
@@ -430,8 +458,9 @@ export const QualityInspectorModule: React.FC = () => {
                     ) : (
                       <div className="mt-1 space-y-1">
                         <div className="text-xs font-mono text-amber-400">
-                          ▲ Withheld (n={stats.count} &lt;{' '}
-                          {MIN_SAMPLE_SIZE_FOR_CAPABILITY_INDEX})
+                          {stats.count < MIN_SAMPLE_SIZE_FOR_CAPABILITY_INDEX
+                            ? `▲ Withheld (n=${stats.count} < ${MIN_SAMPLE_SIZE_FOR_CAPABILITY_INDEX})`
+                            : '▲ Withheld (Preconditions Unmet)'}
                         </div>
                         <div className="text-[10px] text-[#94A3B8] leading-tight">
                           {stats.capabilityStatusReason}
@@ -795,7 +824,7 @@ export const QualityInspectorModule: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-[11px] font-mono text-[#94A3B8]">
-                    {sourceType === 'AI-Assisted Annotation'
+                    {sourceType === 'AI-Assisted Annotation' || sourceType === 'Computed'
                       ? '▲ Will be stored with verifiedPhysicalMeasurement = false'
                       : '● Will be stored as verified physical measurement'}
                   </span>

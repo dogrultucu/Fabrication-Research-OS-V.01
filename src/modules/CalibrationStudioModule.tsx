@@ -28,6 +28,8 @@ import {
 export const CalibrationStudioModule: React.FC = () => {
   const {
     snapshot,
+    selectedExperimentId,
+    setSelectedExperimentId,
     repository,
     refreshWorkspace,
     notifyToast,
@@ -67,6 +69,8 @@ export const CalibrationStudioModule: React.FC = () => {
   const [newSessCode, setNewSessCode] = useState<string>('CAL-2026-002');
   const [newSessTitle, setNewSessTitle] = useState<string>('');
   const [newSessObjective, setNewSessObjective] = useState<string>('');
+  const [newSessMaterialId, setNewSessMaterialId] = useState<string>('');
+  const [newSessExperimentId, setNewSessExperimentId] = useState<string>('');
 
   if (!snapshot) return null;
 
@@ -80,6 +84,7 @@ export const CalibrationStudioModule: React.FC = () => {
 
   const activeSession =
     calibrationSessions.find((s) => s.id === selectedSessionId) ||
+    calibrationSessions.find((s) => s.referenceExperimentId === selectedExperimentId) ||
     calibrationSessions[0];
 
   const sessionTrials = useMemo(() => {
@@ -146,14 +151,28 @@ export const CalibrationStudioModule: React.FC = () => {
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSessTitle.trim()) return;
+    if (!newSessTitle.trim()) {
+      notifyToast('Session Title is required.');
+      return;
+    }
+    const targetMatId = newSessMaterialId || materialProfiles[0]?.id || '';
+    const targetExpId =
+      newSessExperimentId || selectedExperimentId || experiments[0]?.id || '';
+
+    if (!targetMatId || !targetExpId) {
+      notifyToast(
+        'Cannot create Calibration Session: At least one Material Profile and one Reference Experiment must exist first.'
+      );
+      return;
+    }
+
     const sess: CalibrationSession = {
       id: `calsess-${Date.now()}`,
       projectId: project.id,
       sessionCode: newSessCode.trim() || `CAL-${Date.now()}`,
       title: newSessTitle.trim(),
-      materialProfileId: materialProfiles[0]?.id || 'unassigned',
-      referenceExperimentId: experiments[0]?.id || 'unassigned',
+      materialProfileId: targetMatId,
+      referenceExperimentId: targetExpId,
       objective:
         newSessObjective.trim() ||
         'Characterize empirical parameter bounds and checkpoint response.',
@@ -176,9 +195,14 @@ export const CalibrationStudioModule: React.FC = () => {
       isSampleFixture: false,
       createdAt: new Date().toISOString(),
     };
-    await repository.saveCalibrationSession(sess, true);
+    const res = await repository.saveCalibrationSession(sess, true);
+    if (!res.ok) {
+      notifyToast(res.error || 'Failed to save calibration session.');
+      return;
+    }
     await refreshWorkspace();
     setSelectedSessionId(sess.id);
+    setSelectedExperimentId(sess.referenceExperimentId);
     setShowNewSessionForm(false);
     setNewSessTitle('');
     notifyToast(`Created calibration session ${sess.sessionCode}`);
@@ -187,7 +211,8 @@ export const CalibrationStudioModule: React.FC = () => {
   const handleLogTrial = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeSession) return;
-    const nextNum = sessionTrials.length + 1;
+    const nextNum =
+      sessionTrials.reduce((max, t) => Math.max(max, t.trialNumber), 0) + 1;
     const targetW = activeSession.targetMetric.targetValue;
     const residual = Number((trialMeasWidth - targetW).toFixed(3));
 
@@ -235,7 +260,11 @@ export const CalibrationStudioModule: React.FC = () => {
       createdAt: new Date().toISOString(),
     };
 
-    await repository.saveCalibrationTrial(trial);
+    const res = await repository.saveCalibrationTrial(trial);
+    if (!res.ok) {
+      notifyToast(res.error || 'Failed to save calibration trial.');
+      return;
+    }
     await refreshWorkspace();
     notifyToast(`Logged Calibration Trial #${nextNum} (${trialOrigin})`);
   };
@@ -258,7 +287,13 @@ export const CalibrationStudioModule: React.FC = () => {
             <select
               aria-label="Select Calibration Session"
               value={activeSession?.id || ''}
-              onChange={(e) => setSelectedSessionId(e.target.value)}
+              onChange={(e) => {
+                setSelectedSessionId(e.target.value);
+                const s = calibrationSessions.find(
+                  (sess) => sess.id === e.target.value
+                );
+                if (s) setSelectedExperimentId(s.referenceExperimentId);
+              }}
               className="bg-[#0B0E14] border border-[#1E293B] px-3 py-2 text-xs font-mono text-[#F1F5F9]"
             >
               {calibrationSessions.map((s) => (
@@ -308,6 +343,45 @@ export const CalibrationStudioModule: React.FC = () => {
                 placeholder="e.g. Clay Batch B03 Speed-Flow Sensitivity Sweep"
                 className="w-full bg-[#0B0E14] border border-[#1E293B] px-3 py-2 text-xs text-[#F1F5F9]"
               />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-mono text-[#94A3B8] mb-1">
+                Material Profile *
+              </label>
+              <select
+                value={newSessMaterialId || materialProfiles[0]?.id || ''}
+                onChange={(e) => setNewSessMaterialId(e.target.value)}
+                className="w-full bg-[#0B0E14] border border-[#1E293B] px-3 py-2 text-xs font-mono text-[#F1F5F9]"
+              >
+                {materialProfiles.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.batchIdentifier} — {m.materialName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-mono text-[#94A3B8] mb-1">
+                Reference Experiment *
+              </label>
+              <select
+                value={
+                  newSessExperimentId ||
+                  selectedExperimentId ||
+                  experiments[0]?.id ||
+                  ''
+                }
+                onChange={(e) => setNewSessExperimentId(e.target.value)}
+                className="w-full bg-[#0B0E14] border border-[#1E293B] px-3 py-2 text-xs font-mono text-[#F1F5F9]"
+              >
+                {experiments.map((exp) => (
+                  <option key={exp.id} value={exp.id}>
+                    {exp.experimentCode} — {exp.title}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <div>

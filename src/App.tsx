@@ -42,10 +42,10 @@ const MODULE_LABELS: Record<
   { title: string; phaseBadge: string }
 > = {
   overview: { title: 'Overview', phaseBadge: 'Core' },
-  'experiment-lab': { title: '01. Experiment Lab', phaseBadge: 'Phase A Core' },
+  'experiment-lab': { title: '01. Experiment Lab', phaseBadge: 'v0.1.1 Core' },
   'quality-inspector': {
     title: '02. Quality Inspector',
-    phaseBadge: 'Phase A Core',
+    phaseBadge: 'Node & Extrusion',
   },
   'calibration-studio': {
     title: '03. Calibration Studio',
@@ -56,10 +56,10 @@ const MODULE_LABELS: Record<
     phaseBadge: 'Sync-Guarded',
   },
   'research-library': { title: '05. Research Library', phaseBadge: 'Traceable' },
-  'industry-metrics': { title: '06. Industry Metrics', phaseBadge: 'Empirical' },
+  'industry-metrics': { title: '06. Industry Metrics', phaseBadge: 'Stage Yield' },
   'data-management': { title: 'Data Management', phaseBadge: 'Backup/CSV' },
   'project-settings': { title: 'Project Settings', phaseBadge: 'Framing' },
-  'system-status': { title: 'System Status', phaseBadge: '13 Entities' },
+  'system-status': { title: 'System Status', phaseBadge: '17 Entities' },
 };
 
 const ApplicationShell: React.FC = () => {
@@ -71,6 +71,8 @@ const ApplicationShell: React.FC = () => {
     setActiveModule,
     selectedExperimentId,
     setSelectedExperimentId,
+    selectedSpecimenId,
+    setSelectedSpecimenId,
     globalSearchQuery,
     setGlobalSearchQuery,
     storageHealth,
@@ -81,7 +83,7 @@ const ApplicationShell: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0B0E14] text-[#F1F5F9] flex items-center justify-center font-mono text-xs">
-        Initializing Fabrication Research OS Local IndexedDB Repository...
+        Initializing Fabrication Research OS Local IndexedDB Repository (v0.1.1 Schema v2)...
       </div>
     );
   }
@@ -97,6 +99,12 @@ const ApplicationShell: React.FC = () => {
   const activeExperiment = snapshot.experiments.find(
     (e) => e.id === selectedExperimentId
   );
+  const experimentSpecimens = snapshot.specimens.filter(
+    (s) => !selectedExperimentId || s.experimentId === selectedExperimentId
+  );
+  const activeSpecimen = snapshot.specimens.find(
+    (s) => s.id === selectedSpecimenId
+  );
 
   const handleQuickExportSnapshot = () => {
     const json = JSON.stringify(snapshot, null, 2);
@@ -106,13 +114,13 @@ const ApplicationShell: React.FC = () => {
         .slice(0, 10)}.json`,
       json
     );
-    notifyToast('Exported full JSON workspace backup.');
+    notifyToast('Exported full JSON workspace backup (Schema v2).');
   };
 
   return (
     <div className="min-h-screen bg-[#0B0E14] text-[#F1F5F9] flex flex-col">
       {/* Top Navigation Bar */}
-      <header className="h-14 bg-[#0F141C] border-b border-[#1E293B] px-5 flex items-center justify-between gap-6 shrink-0">
+      <header className="h-14 bg-[#0F141C] border-b border-[#1E293B] px-5 flex items-center justify-between gap-4 shrink-0">
         {/* Zone 1: Brand Title */}
         <button
           onClick={() => setActiveModule('overview')}
@@ -121,29 +129,36 @@ const ApplicationShell: React.FC = () => {
           <span className="font-display font-bold text-base tracking-tight text-[#F1F5F9]">
             Fabrication Research OS
           </span>
-          <span className="text-[11px] font-mono text-cyan-400">v0.1.0</span>
+          <span className="text-[11px] font-mono text-cyan-400">v0.1.1</span>
         </button>
 
-        {/* Zone 2: Global Search, Active Experiment Selector & Data Mode Indicator */}
-        <div className="hidden md:flex items-center gap-4 flex-1 max-w-3xl">
+        {/* Zone 2: Global Search, Active Experiment & Specimen Selector & Data Mode Indicator */}
+        <div className="hidden md:flex items-center gap-3 flex-1 max-w-4xl">
           <div className="relative flex-1 max-w-xs">
             <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={globalSearchQuery}
               onChange={(e) => setGlobalSearchQuery(e.target.value)}
-              placeholder="Search experiments, codes, materials..."
+              placeholder="Search experiments, specimens, nodes..."
               className="w-full bg-[#0B0E14] border border-[#1E293B] pl-8 pr-3 py-1 text-xs text-[#F1F5F9] placeholder-[#94A3B8] focus:outline-none focus:border-cyan-500"
             />
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-mono shrink-0">
-            <span className="text-[#94A3B8]">Active Run:</span>
+          <div className="flex items-center gap-1.5 text-xs font-mono shrink-0">
+            <span className="text-[#94A3B8]">Run:</span>
             <select
               aria-label="Active Experiment Shortcut"
               value={selectedExperimentId || ''}
-              onChange={(e) => setSelectedExperimentId(e.target.value || null)}
-              className="bg-[#0B0E14] border border-[#1E293B] px-2.5 py-1 text-xs font-mono text-cyan-400"
+              onChange={(e) => {
+                const nextExpId = e.target.value || null;
+                setSelectedExperimentId(nextExpId);
+                const firstSpec = snapshot.specimens.find(
+                  (s) => s.experimentId === nextExpId
+                );
+                setSelectedSpecimenId(firstSpec?.id || null);
+              }}
+              className="bg-[#0B0E14] border border-[#1E293B] px-2 py-1 text-xs font-mono text-cyan-400"
             >
               {snapshot.experiments.length === 0 ? (
                 <option value="">No Experiments</option>
@@ -157,8 +172,26 @@ const ApplicationShell: React.FC = () => {
             </select>
           </div>
 
+          {experimentSpecimens.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs font-mono shrink-0">
+              <span className="text-[#94A3B8]">Specimen:</span>
+              <select
+                aria-label="Active Specimen Shortcut"
+                value={selectedSpecimenId || ''}
+                onChange={(e) => setSelectedSpecimenId(e.target.value || null)}
+                className="bg-[#0B0E14] border border-[#1E293B] px-2 py-1 text-xs font-mono text-emerald-400"
+              >
+                {experimentSpecimens.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.specimenCode} [{s.currentPhysicalStage}]
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="text-[11px] font-mono text-[#94A3B8] whitespace-nowrap shrink-0">
-            Mode: Local IDB · {storageHealth.userResearchRecordsCount} User /{' '}
+            IDB v{storageHealth.schemaVersion} · {storageHealth.userResearchRecordsCount} User /{' '}
             {storageHealth.sampleRecordsCount} Sample
           </div>
         </div>
@@ -316,6 +349,15 @@ const ApplicationShell: React.FC = () => {
                   </span>
                 </>
               )}
+              {activeSpecimen &&
+                activeSpecimen.experimentId === activeExperiment?.id && (
+                  <>
+                    <span>/</span>
+                    <span className="text-emerald-400">
+                      {activeSpecimen.specimenCode} [{activeSpecimen.currentPhysicalStage}]
+                    </span>
+                  </>
+                )}
             </div>
 
             {toastMessage && (

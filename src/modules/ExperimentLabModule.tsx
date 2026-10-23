@@ -78,6 +78,7 @@ export const ExperimentLabModule: React.FC = () => {
   // Wizard state (7 steps)
   const [wizardStep, setWizardStep] = useState<number>(1);
   const [wizardError, setWizardError] = useState<string | null>(null);
+  const [editingExperimentId, setEditingExperimentId] = useState<string | null>(null);
 
   const [expCode, setExpCode] = useState<string>(() => {
     const count = (snapshot?.experiments.length || 0) + 1;
@@ -239,6 +240,49 @@ export const ExperimentLabModule: React.FC = () => {
   const inspectedExperiment =
     experiments.find((e) => e.id === selectedExperimentId) || filteredExperiments[0];
 
+  const handleLoadExperimentForEdit = (exp: Experiment) => {
+    setEditingExperimentId(exp.id);
+    setExpCode(exp.experimentCode);
+    setExpTitle(exp.title);
+    setExpObjective(exp.researchObjective);
+    setExpHypothesis(exp.hypothesis);
+    setExpMaterialId(exp.materialProfileId);
+    setExpHardwareId(exp.hardwareProfileId);
+    setExpType(exp.experimentType);
+    setExpMethod(exp.baselineOrProposedMethod);
+    setExpRefBaselineId(exp.referenceBaselineExperimentId || '');
+    setExpStatus(exp.status);
+    setExpPlannedDate(exp.plannedDate);
+    setExpOperator(exp.operator);
+    setExpTargetGeometry(exp.targetGeometryReference);
+    setExpNotes(exp.notes);
+    setPrintSpeed(exp.processParameters.printSpeedMmPerSec);
+    setRelativeFlow(exp.processParameters.relativeFlowPercent);
+    setVolumetricFlow(
+      exp.processParameters.volumetricFlowValue !== null
+        ? String(exp.processParameters.volumetricFlowValue)
+        : ''
+    );
+    setVolumetricUnit(exp.processParameters.volumetricFlowUnit);
+    setLayerHeight(exp.processParameters.layerHeightMm);
+    setTargetBeadWidth(exp.processParameters.targetBeadWidthMm);
+    setNozzleDiameter(exp.processParameters.nozzleDiameterMm);
+    setToolOrientation(exp.processParameters.toolOrientation);
+    setParamSource(exp.processParameters.parameterSource);
+    const firstCustomEntry = Object.entries(
+      exp.processParameters.materialSpecificParameters || {}
+    )[0];
+    if (firstCustomEntry) {
+      setCustomParamKey(firstCustomEntry[0]);
+      setCustomParamVal(String(firstCustomEntry[1].value));
+      setCustomParamUnit(firstCustomEntry[1].unit);
+    }
+    setTolerances(exp.evaluationCriteriaSnapshot);
+    setWizardError(null);
+    setWizardStep(1);
+    setSubTab('wizard');
+  };
+
   const handleQuickStatusUpdate = async (
     exp: Experiment,
     nextStatus: ExperimentStatus
@@ -252,7 +296,11 @@ export const ExperimentLabModule: React.FC = () => {
           : exp.actualDate,
       updatedAt: new Date().toISOString(),
     };
-    await repository.saveExperiment(updated, false);
+    const res = await repository.saveExperiment(updated, false);
+    if (!res.ok) {
+      notifyToast(res.error || 'Failed to update status.');
+      return;
+    }
     await refreshWorkspace();
     notifyToast(`Updated ${exp.experimentCode} status to ${nextStatus}`);
   };
@@ -280,7 +328,11 @@ export const ExperimentLabModule: React.FC = () => {
       isSampleFixture: false,
       createdAt: new Date().toISOString(),
     };
-    await repository.saveMaterialProfile(profile, true);
+    const res = await repository.saveMaterialProfile(profile, true);
+    if (!res.ok) {
+      notifyToast(res.error || 'Failed to save material profile.');
+      return;
+    }
     await refreshWorkspace();
     setExpMaterialId(profile.id);
     setNewMatName('');
@@ -309,7 +361,11 @@ export const ExperimentLabModule: React.FC = () => {
       createdAt: now,
       updatedAt: now,
     };
-    await repository.saveHardwareProfile(hw, true);
+    const res = await repository.saveHardwareProfile(hw, true);
+    if (!res.ok) {
+      notifyToast(res.error || 'Failed to save hardware profile.');
+      return;
+    }
     await refreshWorkspace();
     setExpHardwareId(hw.id);
     setNozzleDiameter(hw.nozzleDiameterMm);
@@ -320,10 +376,15 @@ export const ExperimentLabModule: React.FC = () => {
   const handleSubmitExperimentWizard = async () => {
     setWizardError(null);
     const now = new Date().toISOString();
-    const expId = `exp-${Date.now()}`;
-    const ppsId = `pps-${Date.now()}`;
+    const existingExp = editingExperimentId
+      ? experiments.find((e) => e.id === editingExperimentId)
+      : undefined;
+    const expId = existingExp ? existingExp.id : `exp-${Date.now()}`;
+    const ppsId = existingExp ? existingExp.processParameters.id : `pps-${Date.now()}`;
 
-    const matParams: Record<string, { value: number | string; unit: string }> = {};
+    const matParams: Record<string, { value: number | string; unit: string }> = existingExp
+      ? { ...existingExp.processParameters.materialSpecificParameters }
+      : {};
     if (customParamKey.trim() && customParamVal.trim()) {
       const numVal = Number(customParamVal);
       matParams[customParamKey.trim()] = {
@@ -345,7 +406,10 @@ export const ExperimentLabModule: React.FC = () => {
       referenceBaselineExperimentId: expRefBaselineId || undefined,
       status: expStatus,
       plannedDate: expPlannedDate,
-      actualDate: expStatus === 'Completed' ? expPlannedDate : undefined,
+      actualDate:
+        expStatus === 'Completed'
+          ? existingExp?.actualDate || expPlannedDate
+          : existingExp?.actualDate,
       operator: expOperator.trim(),
       hardwareProfileId: expHardwareId,
       processParameters: {
@@ -368,7 +432,7 @@ export const ExperimentLabModule: React.FC = () => {
       evaluationCriteriaSnapshot: tolerances,
       notes: expNotes.trim(),
       isSampleFixture: false,
-      createdAt: now,
+      createdAt: existingExp ? existingExp.createdAt : now,
       updatedAt: now,
     };
 
@@ -382,14 +446,24 @@ export const ExperimentLabModule: React.FC = () => {
       return;
     }
 
-    await repository.saveExperiment(parsed.data, true);
+    const isNew = !existingExp;
+    const saveRes = await repository.saveExperiment(parsed.data, isNew);
+    if (!saveRes.ok) {
+      setWizardError(saveRes.error || 'Failed to save experiment.');
+      return;
+    }
     await refreshWorkspace();
     setSelectedExperimentId(parsed.data.id);
+    setEditingExperimentId(null);
     setSubTab('registry');
     setWizardStep(1);
     setExpCode(`EXP-2026-${String(experiments.length + 2).padStart(3, '0')}`);
     setExpTitle('');
-    notifyToast(`Created experiment ${parsed.data.experimentCode}`);
+    notifyToast(
+      isNew
+        ? `Created experiment ${parsed.data.experimentCode}`
+        : `Updated experiment ${parsed.data.experimentCode}`
+    );
   };
 
   return (
@@ -419,6 +493,7 @@ export const ExperimentLabModule: React.FC = () => {
           </button>
           <button
             onClick={() => {
+              setEditingExperimentId(null);
               if (!expMaterialId && materialProfiles[0])
                 setExpMaterialId(materialProfiles[0].id);
               if (!expHardwareId && hardwareProfiles[0])
@@ -431,7 +506,9 @@ export const ExperimentLabModule: React.FC = () => {
                 : 'text-[#94A3B8] hover:text-[#F1F5F9]'
             }`}
           >
-            + 7-Step New Experiment Wizard
+            {editingExperimentId
+              ? '✎ Editing Experiment'
+              : '+ 7-Step New Experiment Wizard'}
           </button>
           <button
             onClick={() => setSubTab('compare')}
@@ -682,17 +759,32 @@ export const ExperimentLabModule: React.FC = () => {
                       {inspectedExperiment.title}
                     </h2>
                   </div>
-                  <button
-                    onClick={async () => {
-                      await repository.deleteExperiment(inspectedExperiment.id);
-                      await refreshWorkspace();
-                      notifyToast(`Deleted ${inspectedExperiment.experimentCode}`);
-                    }}
-                    title="Delete Experiment"
-                    className="p-1.5 text-[#94A3B8] hover:text-rose-400 border border-[#1E293B] cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleLoadExperimentForEdit(inspectedExperiment)}
+                      title="Edit Experiment Parameters & Metadata"
+                      className="px-2 py-1 text-[11px] font-mono text-cyan-400 hover:bg-[#151C28] border border-[#1E293B] cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const delRes = await repository.deleteExperiment(
+                          inspectedExperiment.id
+                        );
+                        if (!delRes.ok) {
+                          notifyToast(delRes.error || 'Cannot delete experiment');
+                          return;
+                        }
+                        await refreshWorkspace();
+                        notifyToast(`Deleted ${inspectedExperiment.experimentCode}`);
+                      }}
+                      title="Delete Experiment"
+                      className="p-1.5 text-[#94A3B8] hover:text-rose-400 border border-[#1E293B] cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-3 text-xs">

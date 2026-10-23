@@ -1,25 +1,44 @@
 import {
   APP_VERSION,
+  AssemblyVerification,
+  AssemblyVerificationSchema,
+  AuditEventSchema,
+  CalibrationSessionSchema,
+  CalibrationTrialSchema,
   Experiment,
+  ExperimentSchema,
+  FileDatasetMetadataSchema,
+  HardwareProfileSchema,
+  MaterialProfileSchema,
   Measurement,
   MeasurementSchema,
+  MeasurementSourceTypeEnum,
   MeasurementTypeEnum,
-  ProcessObservation,
+  NodeDesign,
+  NodeDesignSchema,
+  NodeFeatureDefinition,
+  NodeFeatureDefinitionSchema,
+  PhysicalStageEnum,
   ProcessObservationSchema,
+  ProcessParameterSetSchema,
+  ProductionMetricRecordSchema,
+  ProjectSchema,
+  ResearchReferenceSchema,
   ResearchWorkspaceSnapshot,
   SCHEMA_VERSION,
+  Specimen,
+  SpecimenSchema,
 } from '../domain/models';
 
 export async function computeSha256Checksum(content: string): Promise<string> {
-  if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+  if (typeof globalThis !== 'undefined' && globalThis.crypto && globalThis.crypto.subtle) {
     const encoder = new TextEncoder();
     const data = encoder.encode(content);
-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
     return `sha256:${hashHex}`;
   }
-  // Deterministic fallback hash if WebCrypto unavailable
   let h = 0x811c9dc5;
   for (let i = 0; i < content.length; i++) {
     h ^= content.charCodeAt(i);
@@ -44,15 +63,65 @@ export function triggerBrowserDownload(
   URL.revokeObjectURL(url);
 }
 
+/**
+ * RFC-4180 compliant CSV line splitter supporting quoted fields with embedded commas and escaped quotes.
+ */
+export function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+const escapeCsv = (val: unknown) => {
+  const str = val === null || val === undefined ? '' : String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+};
+
 export function exportExperimentsToCsv(experiments: Experiment[]): string {
   const headers = [
     'experimentCode',
     'title',
     'status',
+    'researchWorkflowType',
+    'experimentGroup',
     'experimentType',
     'baselineOrProposedMethod',
+    'nodeDesignId',
+    'geometryVersion',
     'materialProfileId',
+    'materialBatchIdentifier',
     'hardwareProfileId',
+    'plannedSpecimenCount',
     'printSpeedMmPerSec',
     'relativeFlowPercent',
     'volumetricFlowValue',
@@ -64,22 +133,20 @@ export function exportExperimentsToCsv(experiments: Experiment[]): string {
     'operator',
   ];
 
-  const escapeCsv = (val: unknown) => {
-    const str = val === null || val === undefined ? '' : String(val);
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-      return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-  };
-
   const rows = experiments.map((e) => [
     e.experimentCode,
     e.title,
     e.status,
+    e.researchWorkflowType ?? 'General Extrusion Experiment',
+    e.experimentGroup ?? 'Custom Experiment Group',
     e.experimentType,
     e.baselineOrProposedMethod,
+    e.nodeDesignId ?? '',
+    e.geometryVersion ?? '',
     e.materialProfileId,
+    e.materialBatchIdentifier ?? '',
     e.hardwareProfileId,
+    e.plannedSpecimenCount ?? '',
     e.processParameters.printSpeedMmPerSec,
     e.processParameters.relativeFlowPercent,
     e.processParameters.volumetricFlowValue ?? '',
@@ -94,48 +161,210 @@ export function exportExperimentsToCsv(experiments: Experiment[]): string {
   return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
 }
 
+export function exportNodeDesignsToCsv(
+  nodeDesigns: NodeDesign[],
+  features: NodeFeatureDefinition[]
+): string {
+  const headers = [
+    'id',
+    'nodeDesignCode',
+    'geometryVersion',
+    'title',
+    'nodeType',
+    'branchCount',
+    'nominalAnglesDeg',
+    'nominalWallThicknessMm',
+    'nominalHeightMm',
+    'nominalFootprintMm',
+    'matingComponentType',
+    'targetAssemblyClearanceMm',
+    'targetStageForNominalDimensions',
+    'expectedLinearShrinkageWetToDryPercent',
+    'expectedLinearShrinkageDryToFiredPercent',
+    'featureCount',
+  ];
+
+  const rows = nodeDesigns.map((nd) => {
+    const fCount = features.filter((f) => f.nodeDesignId === nd.id).length;
+    return [
+      nd.id,
+      nd.nodeDesignCode,
+      nd.geometryVersion,
+      nd.title,
+      nd.nodeType,
+      nd.branchCount,
+      nd.nominalAnglesDeg.join(';'),
+      nd.nominalWallThicknessMm,
+      nd.nominalHeightMm,
+      nd.nominalFootprintMm,
+      nd.matingComponentType,
+      nd.targetAssemblyClearanceMm,
+      nd.targetStageForNominalDimensions,
+      nd.expectedLinearShrinkageWetToDryPercent ?? '',
+      nd.expectedLinearShrinkageDryToFiredPercent ?? '',
+      fCount,
+    ];
+  });
+
+  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
+}
+
+export function exportSpecimensToCsv(specimens: Specimen[]): string {
+  const headers = [
+    'id',
+    'specimenCode',
+    'experimentId',
+    'nodeDesignId',
+    'geometryVersion',
+    'replicateNumber',
+    'fabricationDate',
+    'materialBatchIdentifier',
+    'hardwareProfileId',
+    'processParameterSetId',
+    'currentPhysicalStage',
+    'currentStatus',
+    'acceptanceStatus',
+    'operator',
+    'notes',
+  ];
+
+  const rows = specimens.map((s) => [
+    s.id,
+    s.specimenCode,
+    s.experimentId,
+    s.nodeDesignId ?? '',
+    s.geometryVersion ?? '',
+    s.replicateNumber,
+    s.fabricationDate,
+    s.materialBatchIdentifier,
+    s.hardwareProfileId,
+    s.processParameterSetId,
+    s.currentPhysicalStage,
+    s.currentStatus,
+    s.acceptanceStatus,
+    s.operator,
+    s.notes ?? '',
+  ]);
+
+  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
+}
+
+export function exportAssemblyVerificationsToCsv(
+  verifications: AssemblyVerification[]
+): string {
+  const headers = [
+    'id',
+    'specimenId',
+    'experimentId',
+    'nodeDesignId',
+    'featureId',
+    'physicalStageAtTest',
+    'matingMemberType',
+    'nominalMemberDimensionMm',
+    'actualMemberDimensionMm',
+    'measuredSocketDimensionMm',
+    'computedClearanceMm',
+    'insertionResult',
+    'measuredAngularDeviationDeg',
+    'measuredInsertionDepthMm',
+    'targetInsertionDepthMm',
+    'structuralStabilityNotes',
+    'passFailStatus',
+    'verifiedBy',
+    'verifiedAt',
+  ];
+
+  const rows = verifications.map((v) => [
+    v.id,
+    v.specimenId,
+    v.experimentId,
+    v.nodeDesignId ?? '',
+    v.featureId ?? '',
+    v.physicalStageAtTest,
+    v.matingMemberType,
+    v.nominalMemberDimensionMm,
+    v.actualMemberDimensionMm,
+    v.measuredSocketDimensionMm ?? '',
+    v.computedClearanceMm ?? '',
+    v.insertionResult,
+    v.measuredAngularDeviationDeg ?? '',
+    v.measuredInsertionDepthMm,
+    v.targetInsertionDepthMm,
+    v.structuralStabilityNotes ?? '',
+    v.passFailStatus,
+    v.verifiedBy,
+    v.verifiedAt,
+  ]);
+
+  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
+}
+
 export function exportMeasurementsToCsv(measurements: Measurement[]): string {
   const headers = [
     'id',
     'experimentId',
     'specimenId',
+    'specimenRecordId',
+    'nodeDesignId',
+    'geometryVersion',
+    'featureId',
+    'physicalStage',
+    'targetStage',
     'layerIndex',
+    'xCoordMm',
+    'yCoordMm',
+    'zCoordMm',
     'measurementType',
+    'customMeasurementLabel',
     'measuredValue',
     'targetValue',
     'tolerance',
+    'toleranceLower',
+    'toleranceUpper',
     'unit',
     'sourceType',
     'verifiedPhysicalMeasurement',
     'acquisitionMethod',
+    'algorithmVersion',
     'coordinateFrame',
     'standardUncertainty',
+    'confidenceLevelPercent',
+    'calibrationRef',
+    'notes',
     'timestamp',
   ];
-
-  const escapeCsv = (val: unknown) => {
-    const str = val === null || val === undefined ? '' : String(val);
-    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-      return `"${str.replace(/"/g, '""')}"`;
-    }
-    return str;
-  };
 
   const rows = measurements.map((m) => [
     m.id,
     m.experimentId,
     m.specimenId,
+    m.specimenRecordId ?? '',
+    m.nodeDesignId ?? '',
+    m.geometryVersion ?? '',
+    m.featureId ?? '',
+    m.physicalStage ?? 'Stage Unknown',
+    m.targetStage ?? '',
     m.layerIndex ?? '',
+    m.xCoordMm ?? '',
+    m.yCoordMm ?? '',
+    m.zCoordMm ?? '',
     m.measurementType,
+    m.customMeasurementLabel ?? '',
     m.measuredValue,
     m.targetValue,
     m.tolerance,
+    m.toleranceLower ?? '',
+    m.toleranceUpper ?? '',
     m.unit,
     m.sourceType,
     m.verifiedPhysicalMeasurement,
     m.acquisitionMethod,
+    m.algorithmVersion,
     m.coordinateFrame,
     m.uncertaintyMetadata.standardUncertainty,
+    m.uncertaintyMetadata.confidenceLevelPercent,
+    m.uncertaintyMetadata.calibrationRef,
+    m.notes ?? '',
     m.timestamp,
   ]);
 
@@ -147,17 +376,26 @@ export interface CsvMeasurementParseResult {
   errors: string[];
 }
 
+function parseStrictFiniteNumber(raw: string): number {
+  const trimmed = raw.trim();
+  if (trimmed === '') return NaN;
+  return Number(trimmed);
+}
+
 /**
  * Parses a CSV file of physical measurements and validates each row with Zod.
- * Expected columns (case-insensitive):
- * specimenId, layerIndex, measurementType, measuredValue, targetValue, tolerance, unit, acquisitionMethod, coordinateFrame, standardUncertainty
+ * Supports both v0.1.0 camelCase headers and v0.1.1 snake_case / node-feature headers.
+ * Preserves unit, customMeasurementLabel, spatial coordinates, physicalStage (defaulting to
+ * 'Stage Unknown' when absent — NEVER defaulting legacy records to 'GREEN'), toleranceLower/Upper,
+ * sourceType, and verifiedPhysicalMeasurement provenance on round-trip imports.
  */
 export function parseMeasurementsCsv(
   csvText: string,
   targetExperimentId: string,
   sourceFileId?: string
 ): CsvMeasurementParseResult {
-  const lines = csvText
+  const normalizedCsv = csvText.replace(/^\uFEFF/, '');
+  const lines = normalizedCsv
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
@@ -169,62 +407,262 @@ export function parseMeasurementsCsv(
     };
   }
 
-  const rawHeaders = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
-  const colIndex = (name: string) =>
-    rawHeaders.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+  const rawHeaders = splitCsvLine(lines[0]);
+  const colIndexAny = (names: string[]) => {
+    for (const name of names) {
+      const idx = rawHeaders.findIndex((h) => h.toLowerCase() === name.toLowerCase());
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  };
 
   const validMeasurements: Measurement[] = [];
   const errors: string[] = [];
+  const seenBatchIds = new Set<string>();
 
   for (let i = 1; i < lines.length; i++) {
-    const rowValues = lines[i].split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
-    const getVal = (name: string, fallback = '') => {
-      const idx = colIndex(name);
+    const rowValues = splitCsvLine(lines[i]);
+    const getVal = (names: string | string[], fallback = '') => {
+      const list = Array.isArray(names) ? names : [names];
+      const idx = colIndexAny(list);
       return idx >= 0 && idx < rowValues.length ? rowValues[idx] : fallback;
     };
 
-    const rawType = getVal('measurementType', 'bead width');
-    const parsedTypeResult = MeasurementTypeEnum.safeParse(rawType);
-    const measurementType = parsedTypeResult.success ? parsedTypeResult.data : 'custom measurement';
+    const rawMeasuredStr = getVal(['measuredValue', 'measured_value'], '');
+    const rawTargetStr = getVal(['targetValue', 'target_value'], '');
+    const rawTolLowerStr = getVal(['toleranceLower', 'tolerance_lower'], '');
+    const rawTolUpperStr = getVal(['toleranceUpper', 'tolerance_upper'], '');
+    const rawTolStr = getVal(['tolerance'], '');
 
-    const measuredValue = Number(getVal('measuredValue', 'NaN'));
-    const targetValue = Number(getVal('targetValue', 'NaN'));
-    const tolerance = Number(getVal('tolerance', '0.5'));
-    const layerIdxRaw = getVal('layerIndex', '');
-    const layerIndex = layerIdxRaw !== '' ? Number(layerIdxRaw) : undefined;
-    const uncertainty = Number(getVal('standardUncertainty', '0.05'));
+    const measuredValue = parseStrictFiniteNumber(rawMeasuredStr);
+    const targetValue = parseStrictFiniteNumber(rawTargetStr);
+
+    if (!Number.isFinite(measuredValue)) {
+      errors.push(`Row ${i + 1}: Missing or non-numeric measuredValue ("${rawMeasuredStr}").`);
+      continue;
+    }
+    if (!Number.isFinite(targetValue)) {
+      errors.push(`Row ${i + 1}: Missing or non-numeric targetValue ("${rawTargetStr}").`);
+      continue;
+    }
+
+    let toleranceLower: number | undefined;
+    let toleranceUpper: number | undefined;
+    if (rawTolLowerStr !== '') {
+      const num = parseStrictFiniteNumber(rawTolLowerStr);
+      if (!Number.isFinite(num)) {
+        errors.push(`Row ${i + 1}: toleranceLower must be a finite number ("${rawTolLowerStr}").`);
+        continue;
+      }
+      toleranceLower = num;
+    }
+    if (rawTolUpperStr !== '') {
+      const num = parseStrictFiniteNumber(rawTolUpperStr);
+      if (!Number.isFinite(num)) {
+        errors.push(`Row ${i + 1}: toleranceUpper must be a finite number ("${rawTolUpperStr}").`);
+        continue;
+      }
+      toleranceUpper = num;
+    }
+    if (
+      toleranceLower !== undefined &&
+      toleranceUpper !== undefined &&
+      toleranceLower > toleranceUpper
+    ) {
+      errors.push(
+        `Row ${i + 1}: toleranceLower (${toleranceLower}) cannot exceed toleranceUpper (${toleranceUpper}).`
+      );
+      continue;
+    }
+
+    let tolerance: number;
+    if (rawTolStr !== '') {
+      tolerance = parseStrictFiniteNumber(rawTolStr);
+      if (!Number.isFinite(tolerance) || tolerance <= 0) {
+        errors.push(`Row ${i + 1}: Tolerance must be a positive number ("${rawTolStr}").`);
+        continue;
+      }
+    } else if (toleranceLower !== undefined || toleranceUpper !== undefined) {
+      tolerance = Math.max(
+        Math.abs(toleranceLower ?? 0),
+        Math.abs(toleranceUpper ?? 0),
+        0.001
+      );
+    } else {
+      tolerance = 0.5;
+    }
+
+    const rawType = getVal(['measurementType', 'measurement_type'], 'bead width');
+    const parsedTypeResult = MeasurementTypeEnum.safeParse(rawType);
+    const measurementType = parsedTypeResult.success
+      ? parsedTypeResult.data
+      : 'custom measurement';
+    const explicitCustomLabel = getVal(
+      ['customMeasurementLabel', 'custom_measurement_label'],
+      ''
+    );
+    const customMeasurementLabel =
+      explicitCustomLabel || (!parsedTypeResult.success ? rawType : undefined);
+
+    // Physical stage: default to 'Stage Unknown' when omitted in legacy CSVs
+    const rawStage = getVal(['physicalStage', 'physical_stage'], '');
+    let physicalStage: Measurement['physicalStage'] = 'Stage Unknown';
+    if (rawStage !== '') {
+      const stageNorm = rawStage.trim();
+      const stageParse = PhysicalStageEnum.safeParse(stageNorm);
+      if (!stageParse.success) {
+        errors.push(
+          `Row ${i + 1}: Invalid physicalStage "${rawStage}". Allowed: GREEN, DRY, FIRED, Stage Unknown, Custom.`
+        );
+        continue;
+      }
+      physicalStage = stageParse.data;
+    }
+
+    const rawTargetStage = getVal(['targetStage', 'target_stage'], '');
+    let targetStage: Measurement['targetStage'] = undefined;
+    if (rawTargetStage !== '') {
+      const targetStageParse = PhysicalStageEnum.safeParse(rawTargetStage.trim());
+      if (targetStageParse.success) {
+        targetStage = targetStageParse.data;
+      }
+    }
+
+    const layerIdxRaw = getVal(['layerIndex', 'layer_index'], '');
+    const layerIndex =
+      layerIdxRaw !== '' ? parseStrictFiniteNumber(layerIdxRaw) : undefined;
+    if (layerIndex !== undefined && (!Number.isInteger(layerIndex) || layerIndex < 0)) {
+      errors.push(`Row ${i + 1}: layerIndex must be a non-negative integer ("${layerIdxRaw}").`);
+      continue;
+    }
+
+    const parseOptionalCoord = (colNames: string[]): { ok: boolean; val?: number } => {
+      const raw = getVal(colNames, '');
+      if (raw === '') return { ok: true, val: undefined };
+      const num = parseStrictFiniteNumber(raw);
+      if (!Number.isFinite(num)) {
+        errors.push(`Row ${i + 1}: ${colNames[0]} must be a finite number ("${raw}").`);
+        return { ok: false };
+      }
+      return { ok: true, val: num };
+    };
+
+    const xRes = parseOptionalCoord(['xCoordMm', 'x_coord_mm']);
+    const yRes = parseOptionalCoord(['yCoordMm', 'y_coord_mm']);
+    const zRes = parseOptionalCoord(['zCoordMm', 'z_coord_mm']);
+    if (!xRes.ok || !yRes.ok || !zRes.ok) continue;
+
+    const uncertaintyRaw = getVal(
+      ['standardUncertainty', 'standard_uncertainty', 'uncertainty'],
+      '0.05'
+    );
+    const uncertainty =
+      uncertaintyRaw !== '' ? parseStrictFiniteNumber(uncertaintyRaw) : 0.05;
+    if (!Number.isFinite(uncertainty) || uncertainty < 0) {
+      errors.push(
+        `Row ${i + 1}: standardUncertainty must be a non-negative number ("${uncertaintyRaw}").`
+      );
+      continue;
+    }
+
+    const confRaw = getVal(['confidenceLevelPercent', 'confidence_level_percent'], '95');
+    const confidenceLevelPercent =
+      confRaw !== '' ? parseStrictFiniteNumber(confRaw) : 95;
+    if (
+      !Number.isFinite(confidenceLevelPercent) ||
+      confidenceLevelPercent < 50 ||
+      confidenceLevelPercent > 99.9
+    ) {
+      errors.push(
+        `Row ${i + 1}: confidenceLevelPercent must be between 50 and 99.9 ("${confRaw}").`
+      );
+      continue;
+    }
+
+    // Preserve provenance if provided in CSV; never elevate AI-Assisted or Computed to verifiedPhysicalMeasurement = true
+    const rawSourceType = getVal(['sourceType', 'source_type'], 'Imported');
+    const parsedSourceResult = MeasurementSourceTypeEnum.safeParse(rawSourceType);
+    const sourceType = parsedSourceResult.success ? parsedSourceResult.data : 'Imported';
+
+    const rawVerifiedStr = getVal(
+      ['verifiedPhysicalMeasurement', 'verified_physical_measurement'],
+      ''
+    ).toLowerCase();
+    let verifiedPhysicalMeasurement =
+      sourceType === 'Manual' || sourceType === 'Imported';
+    if (rawVerifiedStr === 'false' || rawVerifiedStr === '0') {
+      verifiedPhysicalMeasurement = false;
+    }
+    if (
+      sourceType === 'AI-Assisted Annotation' ||
+      sourceType === 'Computed'
+    ) {
+      verifiedPhysicalMeasurement = false;
+    }
+
+    const unitStr = getVal(['unit'], '');
+    if (!unitStr) {
+      errors.push(`Row ${i + 1}: Explicit physical unit is required.`);
+      continue;
+    }
+
+    const candidateId = getVal(['id'], '') || `meas-imp-${Date.now()}-${i}`;
+    if (seenBatchIds.has(candidateId)) {
+      errors.push(`Row ${i + 1}: Duplicate measurement id "${candidateId}" in CSV batch.`);
+      continue;
+    }
+    seenBatchIds.add(candidateId);
+
+    const rowExpId = getVal(['experimentId', 'experiment_id'], '') || targetExperimentId;
 
     const candidate: Measurement = {
-      id: `meas-imp-${Date.now()}-${i}`,
-      experimentId: targetExperimentId,
-      specimenId: getVal('specimenId', `SPEC-IMP-${i}`),
-      layerIndex: Number.isFinite(layerIndex) ? layerIndex : undefined,
+      id: candidateId,
+      experimentId: targetExperimentId || rowExpId,
+      specimenId: getVal(['specimenId', 'specimen_id'], '') || `SPEC-IMP-${i}`,
+      specimenRecordId: getVal(['specimenRecordId', 'specimen_record_id'], '') || undefined,
+      nodeDesignId: getVal(['nodeDesignId', 'node_design_id'], '') || undefined,
+      geometryVersion: getVal(['geometryVersion', 'geometry_version'], '') || undefined,
+      featureId: getVal(['featureId', 'feature_id'], '') || undefined,
+      physicalStage,
+      targetStage,
+      layerIndex,
+      xCoordMm: xRes.val,
+      yCoordMm: yRes.val,
+      zCoordMm: zRes.val,
       measurementType,
-      customMeasurementLabel: !parsedTypeResult.success ? rawType : undefined,
+      customMeasurementLabel,
       measuredValue,
-      unit: getVal('unit', 'mm') || 'mm',
+      unit: unitStr,
       targetValue,
-      tolerance: tolerance > 0 ? tolerance : 0.5,
-      timestamp: getVal('timestamp', new Date().toISOString()) || new Date().toISOString(),
-      sourceType: 'Imported',
-      verifiedPhysicalMeasurement: true,
+      tolerance,
+      toleranceLower,
+      toleranceUpper,
+      timestamp:
+        getVal(['timestamp', 'measurement_timestamp'], '') || new Date().toISOString(),
+      sourceType,
+      verifiedPhysicalMeasurement,
       profileGeometryType: 'Scalar Point Measurement (Schematic Only)',
-      acquisitionMethod: getVal('acquisitionMethod', 'CSV Instrument Import'),
-      algorithmVersion: 'csv-import-v1',
-      coordinateFrame: getVal('coordinateFrame', 'wobjPrintTable_01'),
+      acquisitionMethod:
+        getVal(['acquisitionMethod', 'measurement_method'], '') || 'CSV Instrument Import',
+      algorithmVersion: getVal(['algorithmVersion', 'algorithm_version'], '') || 'csv-import-v2',
+      coordinateFrame:
+        getVal(['coordinateFrame', 'coordinate_frame'], '') || 'wobjPrintTable_01',
       uncertaintyMetadata: {
-        standardUncertainty: Number.isFinite(uncertainty) && uncertainty >= 0 ? uncertainty : 0.05,
-        confidenceLevelPercent: 95,
-        calibrationRef: 'IMPORTED-CSV',
+        standardUncertainty: uncertainty,
+        confidenceLevelPercent,
+        calibrationRef: getVal(['calibrationRef', 'calibration_ref'], '') || 'IMPORTED-CSV',
       },
       sourceFileId,
+      notes: getVal(['notes'], '') || undefined,
       isSampleFixture: false,
     };
 
     const validation = MeasurementSchema.safeParse(candidate);
     if (!validation.success) {
       errors.push(
-        `Row ${i + 1}: ${validation.error.issues.map((iss) => `${iss.path.join('.')}: ${iss.message}`).join('; ')}`
+        `Row ${i + 1}: ${validation.error.issues
+          .map((iss) => `${iss.path.join('.')}: ${iss.message}`)
+          .join('; ')}`
       );
     } else {
       validMeasurements.push(validation.data);
@@ -242,64 +680,322 @@ export interface BackupValidationResult {
 }
 
 /**
- * Validates and non-destructively migrates a JSON workspace backup snapshot.
+ * Validates and non-destructively migrates a JSON workspace backup snapshot (v0.1.0 Schema v1 -> v0.1.1 Schema v2),
+ * enforcing entity-level Zod validation and cross-entity relational integrity across all 17 entities.
  */
 export function validateAndMigrateWorkspaceSnapshot(
   rawJson: string
 ): BackupValidationResult {
   try {
-    const parsed = JSON.parse(rawJson);
+    const normalizedJson = rawJson.replace(/^\uFEFF/, '');
+    const parsed = JSON.parse(normalizedJson);
     if (!parsed || typeof parsed !== 'object') {
       return { valid: false, errors: ['Root JSON payload must be an object.'] };
     }
 
-    if (!parsed.project || typeof parsed.project.id !== 'string') {
+    const errors: string[] = [];
+
+    const projParse = ProjectSchema.safeParse({
+      ...parsed.project,
+      schemaVersion: SCHEMA_VERSION,
+    });
+    if (!projParse.success) {
       return {
         valid: false,
-        errors: ['Snapshot is missing a valid Project record (`project.id`).'],
+        errors: [
+          `Invalid Project entity: ${projParse.error.issues
+            .map((i) => `${i.path.join('.')}: ${i.message}`)
+            .join('; ')}`,
+        ],
       };
     }
 
     const incomingVersion =
       typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : 0;
 
-    // Non-destructive defaults for any missing arrays
+    const validateArray = <T>(
+      arr: unknown,
+      schema: {
+        safeParse: (v: unknown) => {
+          success: boolean;
+          data?: T;
+          error?: { issues: Array<{ path: PropertyKey[]; message: string }> };
+        };
+      },
+      entityLabel: string
+    ): T[] => {
+      if (arr === undefined || arr === null) return [];
+      if (!Array.isArray(arr)) {
+        errors.push(`${entityLabel} must be an array.`);
+        return [];
+      }
+      const validItems: T[] = [];
+      const seenIds = new Set<string>();
+      arr.forEach((item, idx) => {
+        const res = schema.safeParse(item);
+        if (!res.success) {
+          errors.push(
+            `${entityLabel}[${idx}]: ${res.error?.issues
+              .map((iss) => `${iss.path.join('.')}: ${iss.message}`)
+              .join('; ')}`
+          );
+        } else {
+          const id = (res.data as { id?: string }).id;
+          if (id) {
+            if (seenIds.has(id)) {
+              errors.push(`${entityLabel}[${idx}]: Duplicate ID "${id}" detected.`);
+              return;
+            }
+            seenIds.add(id);
+          }
+          validItems.push(res.data as T);
+        }
+      });
+      return validItems;
+    };
+
+    const materialProfiles = validateArray(
+      parsed.materialProfiles,
+      MaterialProfileSchema,
+      'materialProfiles'
+    );
+    const hardwareProfiles = validateArray(
+      parsed.hardwareProfiles,
+      HardwareProfileSchema,
+      'hardwareProfiles'
+    );
+    const nodeDesigns = validateArray(
+      parsed.nodeDesigns,
+      NodeDesignSchema,
+      'nodeDesigns'
+    );
+    const nodeFeatureDefinitions = validateArray(
+      parsed.nodeFeatureDefinitions,
+      NodeFeatureDefinitionSchema,
+      'nodeFeatureDefinitions'
+    );
+    const experiments = validateArray(
+      parsed.experiments,
+      ExperimentSchema,
+      'experiments'
+    );
+    const specimens = validateArray(
+      parsed.specimens,
+      SpecimenSchema,
+      'specimens'
+    );
+    const rawProcessParameterSets = validateArray(
+      parsed.processParameterSets,
+      ProcessParameterSetSchema,
+      'processParameterSets'
+    );
+    const measurements = validateArray(
+      parsed.measurements,
+      MeasurementSchema,
+      'measurements'
+    );
+    const assemblyVerifications = validateArray(
+      parsed.assemblyVerifications,
+      AssemblyVerificationSchema,
+      'assemblyVerifications'
+    );
+    const processObservations = validateArray(
+      parsed.processObservations,
+      ProcessObservationSchema,
+      'processObservations'
+    );
+    const calibrationSessions = validateArray(
+      parsed.calibrationSessions,
+      CalibrationSessionSchema,
+      'calibrationSessions'
+    );
+    const calibrationTrials = validateArray(
+      parsed.calibrationTrials,
+      CalibrationTrialSchema,
+      'calibrationTrials'
+    );
+    const researchReferences = validateArray(
+      parsed.researchReferences,
+      ResearchReferenceSchema,
+      'researchReferences'
+    );
+    const productionMetrics = validateArray(
+      parsed.productionMetrics,
+      ProductionMetricRecordSchema,
+      'productionMetrics'
+    );
+    const fileMetadata = validateArray(
+      parsed.fileMetadata,
+      FileDatasetMetadataSchema,
+      'fileMetadata'
+    );
+    const auditEvents = validateArray(
+      parsed.auditEvents,
+      AuditEventSchema,
+      'auditEvents'
+    );
+
+    // Relational integrity & uniqueness verification across entities
+    const matIds = new Set(materialProfiles.map((m) => m.id));
+    const hwIds = new Set(hardwareProfiles.map((h) => h.id));
+    const nodeDesignIds = new Set(nodeDesigns.map((nd) => nd.id));
+    const expIds = new Set(experiments.map((e) => e.id));
+    const specIds = new Set(specimens.map((s) => s.id));
+    const sessIds = new Set(calibrationSessions.map((s) => s.id));
+    const seenExpCodes = new Set<string>();
+
+    for (const feat of nodeFeatureDefinitions) {
+      if (!nodeDesignIds.has(feat.nodeDesignId)) {
+        errors.push(
+          `Relational Integrity Error: NodeFeatureDefinition "${feat.featureCode}" references missing nodeDesignId "${feat.nodeDesignId}".`
+        );
+      }
+    }
+
+    for (const exp of experiments) {
+      const codeNorm = exp.experimentCode.trim().toLowerCase();
+      if (seenExpCodes.has(codeNorm)) {
+        errors.push(
+          `Duplicate experimentCode "${exp.experimentCode}" detected in backup.`
+        );
+      }
+      seenExpCodes.add(codeNorm);
+
+      if (!matIds.has(exp.materialProfileId)) {
+        errors.push(
+          `Relational Integrity Error: Experiment "${exp.experimentCode}" references missing materialProfileId "${exp.materialProfileId}".`
+        );
+      }
+      if (!hwIds.has(exp.hardwareProfileId)) {
+        errors.push(
+          `Relational Integrity Error: Experiment "${exp.experimentCode}" references missing hardwareProfileId "${exp.hardwareProfileId}".`
+        );
+      }
+      if (
+        exp.referenceBaselineExperimentId &&
+        !expIds.has(exp.referenceBaselineExperimentId)
+      ) {
+        errors.push(
+          `Relational Integrity Error: Experiment "${exp.experimentCode}" references missing referenceBaselineExperimentId "${exp.referenceBaselineExperimentId}".`
+        );
+      }
+      if (exp.nodeDesignId && !nodeDesignIds.has(exp.nodeDesignId)) {
+        errors.push(
+          `Relational Integrity Error: Experiment "${exp.experimentCode}" references missing nodeDesignId "${exp.nodeDesignId}".`
+        );
+      }
+    }
+
+    for (const spec of specimens) {
+      if (!expIds.has(spec.experimentId)) {
+        errors.push(
+          `Relational Integrity Error: Specimen "${spec.specimenCode}" references missing experimentId "${spec.experimentId}".`
+        );
+      }
+      if (spec.nodeDesignId && !nodeDesignIds.has(spec.nodeDesignId)) {
+        errors.push(
+          `Relational Integrity Error: Specimen "${spec.specimenCode}" references missing nodeDesignId "${spec.nodeDesignId}".`
+        );
+      }
+    }
+
+    for (const meas of measurements) {
+      if (!expIds.has(meas.experimentId)) {
+        errors.push(
+          `Relational Integrity Error: Measurement "${meas.id}" references missing experimentId "${meas.experimentId}".`
+        );
+      }
+    }
+
+    for (const assm of assemblyVerifications) {
+      if (!expIds.has(assm.experimentId)) {
+        errors.push(
+          `Relational Integrity Error: AssemblyVerification "${assm.id}" references missing experimentId "${assm.experimentId}".`
+        );
+      }
+      if (!specIds.has(assm.specimenId)) {
+        errors.push(
+          `Relational Integrity Error: AssemblyVerification "${assm.id}" references missing specimenId "${assm.specimenId}".`
+        );
+      }
+    }
+
+    for (const obs of processObservations) {
+      if (!expIds.has(obs.experimentId)) {
+        errors.push(
+          `Relational Integrity Error: ProcessObservation "${obs.id}" references missing experimentId "${obs.experimentId}".`
+        );
+      }
+    }
+
+    for (const sess of calibrationSessions) {
+      if (!matIds.has(sess.materialProfileId)) {
+        errors.push(
+          `Relational Integrity Error: CalibrationSession "${sess.sessionCode}" references missing materialProfileId "${sess.materialProfileId}".`
+        );
+      }
+      if (!expIds.has(sess.referenceExperimentId)) {
+        errors.push(
+          `Relational Integrity Error: CalibrationSession "${sess.sessionCode}" references missing referenceExperimentId "${sess.referenceExperimentId}".`
+        );
+      }
+    }
+
+    for (const trial of calibrationTrials) {
+      if (!sessIds.has(trial.calibrationSessionId)) {
+        errors.push(
+          `Relational Integrity Error: CalibrationTrial "${trial.id}" references missing calibrationSessionId "${trial.calibrationSessionId}".`
+        );
+      }
+      if (!expIds.has(trial.experimentId)) {
+        errors.push(
+          `Relational Integrity Error: CalibrationTrial "${trial.id}" references missing experimentId "${trial.experimentId}".`
+        );
+      }
+    }
+
+    for (const prod of productionMetrics) {
+      if (!expIds.has(prod.experimentId)) {
+        errors.push(
+          `Relational Integrity Error: ProductionMetricRecord "${prod.id}" references missing experimentId "${prod.experimentId}".`
+        );
+      }
+    }
+
+    if (errors.length > 0) {
+      return { valid: false, errors };
+    }
+
+    // Ensure processParameterSets is synchronized with experiments
+    const ppsMap = new Map(rawProcessParameterSets.map((p) => [p.id, p]));
+    for (const exp of experiments) {
+      ppsMap.set(exp.processParameters.id, exp.processParameters);
+    }
+    const processParameterSets = Array.from(ppsMap.values()).filter((p) =>
+      expIds.has(p.experimentId)
+    );
+
     const snapshot: ResearchWorkspaceSnapshot = {
       schemaVersion: SCHEMA_VERSION,
       appVersion: parsed.appVersion || APP_VERSION,
       exportedAt: parsed.exportedAt || new Date().toISOString(),
-      project: {
-        ...parsed.project,
-        schemaVersion: SCHEMA_VERSION,
-      },
-      materialProfiles: Array.isArray(parsed.materialProfiles)
-        ? parsed.materialProfiles
-        : [],
-      hardwareProfiles: Array.isArray(parsed.hardwareProfiles)
-        ? parsed.hardwareProfiles
-        : [],
-      experiments: Array.isArray(parsed.experiments) ? parsed.experiments : [],
-      processParameterSets: Array.isArray(parsed.processParameterSets)
-        ? parsed.processParameterSets
-        : [],
-      measurements: Array.isArray(parsed.measurements) ? parsed.measurements : [],
-      processObservations: Array.isArray(parsed.processObservations)
-        ? parsed.processObservations
-        : [],
-      calibrationSessions: Array.isArray(parsed.calibrationSessions)
-        ? parsed.calibrationSessions
-        : [],
-      calibrationTrials: Array.isArray(parsed.calibrationTrials)
-        ? parsed.calibrationTrials
-        : [],
-      researchReferences: Array.isArray(parsed.researchReferences)
-        ? parsed.researchReferences
-        : [],
-      productionMetrics: Array.isArray(parsed.productionMetrics)
-        ? parsed.productionMetrics
-        : [],
-      fileMetadata: Array.isArray(parsed.fileMetadata) ? parsed.fileMetadata : [],
-      auditEvents: Array.isArray(parsed.auditEvents) ? parsed.auditEvents : [],
+      project: projParse.data,
+      materialProfiles,
+      hardwareProfiles,
+      nodeDesigns,
+      nodeFeatureDefinitions,
+      experiments,
+      specimens,
+      processParameterSets,
+      measurements,
+      assemblyVerifications,
+      processObservations,
+      calibrationSessions,
+      calibrationTrials,
+      researchReferences,
+      productionMetrics,
+      fileMetadata,
+      auditEvents,
     };
 
     return {
@@ -313,7 +1009,9 @@ export function validateAndMigrateWorkspaceSnapshot(
     return {
       valid: false,
       errors: [
-        `Failed to parse JSON backup: ${err instanceof Error ? err.message : String(err)}`,
+        `Failed to parse JSON backup: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
       ],
     };
   }

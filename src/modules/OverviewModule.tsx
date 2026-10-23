@@ -1,19 +1,11 @@
 import React from 'react';
 import {
   ArrowRight,
-  Beaker,
-  BookOpen,
-  CheckCircle2,
   ClipboardCheck,
-  Cpu,
   Database,
-  FileSpreadsheet,
   FlaskConical,
-  Factory,
-  Layers,
   Plus,
   Settings,
-  Sliders,
 } from 'lucide-react';
 import { useResearchWorkspace } from '../repositories/repository';
 import {
@@ -36,6 +28,9 @@ export const OverviewModule: React.FC = () => {
   const {
     project,
     experiments,
+    nodeDesigns,
+    specimens,
+    assemblyVerifications,
     materialProfiles,
     hardwareProfiles,
     measurements,
@@ -54,11 +49,19 @@ export const OverviewModule: React.FC = () => {
   const proposedExperiments = experiments.filter(
     (e) => e.baselineOrProposedMethod !== 'Fixed-Parameter Baseline'
   );
+  const ceramicNodeExperiments = experiments.filter(
+    (e) =>
+      e.researchWorkflowType === 'Ceramic Node Fabrication' ||
+      e.researchWorkflowType === 'Joint / Socket Fit Study' ||
+      e.researchWorkflowType === 'Shrinkage Study'
+  );
 
   const handleLoadSample = async () => {
     await repository.loadSampleDatasetNonDestructive();
     await refreshWorkspace();
-    notifyToast('Loaded MRAC 2026–2027 sample dataset (flagged as removable sample fixtures).');
+    notifyToast(
+      'Loaded MRAC 2026–2027 sample dataset including Ceramic Node & Extrusion fixtures.'
+    );
   };
 
   return (
@@ -70,18 +73,22 @@ export const OverviewModule: React.FC = () => {
             <div className="flex items-center gap-2 text-xs font-mono text-[#94A3B8]">
               <span>IAAC MRAC 2026–2027</span>
               <span aria-hidden="true">·</span>
-              <span>SCHEMA v{project.schemaVersion}</span>
+              <span>RELEASE v0.1.1 (CERAMIC NODE WORKFLOW)</span>
               <span aria-hidden="true">·</span>
-              <span>LOCAL-FIRST INDEXEDDB REPOSITORY</span>
+              <span>SCHEMA v{project.schemaVersion} (17 ENTITIES)</span>
             </div>
             <h1 className="text-2xl font-semibold text-[#F1F5F9] tracking-tight">
               {project.workingThesisTitle || project.name}
             </h1>
-            <p className="text-sm text-[#94A3B8] leading-relaxed">
-              Empirical research workstation for evaluating fixed-parameter fabrication baselines,
-              manual operator tuning, and feedforward / checkpoint recalibration across robotic
-              clay and polymer additive manufacturing.
-            </p>
+            <div className="p-3 bg-[#0B0E14] border border-cyan-500/30 mt-2">
+              <div className="text-[10px] font-mono text-cyan-400">
+                WORKING RESEARCH QUESTION (EDITABLE IN PROJECT SETTINGS)
+              </div>
+              <p className="text-xs text-[#F1F5F9] leading-relaxed mt-1">
+                {project.workingResearchQuestion ||
+                  'How can checkpoint-based geometric inspection and parameter recalibration improve the dimensional accuracy, repeatability, and assembly fit of robotically 3D-printed ceramic structural nodes across wet, dry, and fired states?'}
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
@@ -89,7 +96,7 @@ export const OverviewModule: React.FC = () => {
               className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-medium text-xs transition-colors flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              New Experiment
+              New Experiment / Node Study
             </button>
             <button
               onClick={() => setActiveModule('project-settings')}
@@ -140,14 +147,16 @@ export const OverviewModule: React.FC = () => {
             ) : (
               <div className="p-3 bg-[#0B0E14] border border-[#1E293B] text-xs text-[#94A3B8] space-y-2">
                 <p>
-                  No official submitted abstract has been entered yet. This software never
-                  fabricates or claims an unverified thesis abstract.
+                  No official submitted abstract has been entered yet. The Working
+                  Research Question above is kept strictly separate from the official
+                  Submitted Thesis Abstract.
                 </p>
                 <button
                   onClick={() => setActiveModule('project-settings')}
                   className="text-cyan-400 hover:underline font-mono text-xs inline-flex items-center gap-1 cursor-pointer"
                 >
-                  Enter submitted abstract in Project Settings <ArrowRight className="w-3 h-3" />
+                  Enter submitted abstract in Project Settings{' '}
+                  <ArrowRight className="w-3 h-3" />
                 </button>
               </div>
             )}
@@ -160,7 +169,7 @@ export const OverviewModule: React.FC = () => {
         <section className="bg-[#0F141C] border border-[#1E293B] p-8">
           <div className="max-w-2xl space-y-4">
             <div className="text-xs font-mono text-cyan-400">
-              CLEAN SCIENTIFIC WORKSPACE INITIALIZED
+              CLEAN SCIENTIFIC WORKSPACE INITIALIZED (v0.1.1)
             </div>
             <h2 className="text-xl font-semibold text-[#F1F5F9]">
               Zero Experiments Recorded in Local Repository
@@ -168,9 +177,9 @@ export const OverviewModule: React.FC = () => {
             <p className="text-sm text-[#94A3B8] leading-relaxed">
               To maintain scientific integrity, Fabrication Research OS starts with an empty
               empirical database. You can begin logging your own material batches, hardware
-              configurations, and experiments immediately, or load the non-destructive MRAC
-              sample dataset (comparing ABB IRB 140 clay extrusion baseline vs. checkpoint
-              recalibration and desktop PETG runs) to inspect all six interconnected modules.
+              configurations, ceramic node designs, specimens, and experiments immediately,
+              or load the non-destructive MRAC sample dataset (including `EXP-004` Ceramic
+              Node Fabrication with `NODE-A V01` and stage-separated GREEN/DRY measurements).
             </p>
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
@@ -203,12 +212,26 @@ export const OverviewModule: React.FC = () => {
                 <span className="text-xs font-mono text-[#94A3B8] ml-1.5">runs</span>
               </div>
               <div className="mt-2 text-xs text-[#94A3B8] font-mono">
-                {baselineExperiments.length} baseline · {proposedExperiments.length} adaptive
+                {ceramicNodeExperiments.length} node · {baselineExperiments.length} base ·{' '}
+                {proposedExperiments.length} adapt
               </div>
             </div>
 
             <div className="bg-[#0F141C] border border-[#1E293B] p-4">
-              <div className="text-xs text-[#94A3B8]">Material Profiles</div>
+              <div className="text-xs text-[#94A3B8]">Node Designs & Specs</div>
+              <div className="mt-1 flex items-baseline">
+                <span className="text-2xl font-mono font-semibold text-[#F1F5F9] tabular-nums">
+                  {specimens.length}
+                </span>
+                <span className="text-xs font-mono text-[#94A3B8] ml-1.5">specimens</span>
+              </div>
+              <div className="mt-2 text-xs text-[#94A3B8] font-mono">
+                {nodeDesigns.length} node design(s) · {assemblyVerifications.length} fit tests
+              </div>
+            </div>
+
+            <div className="bg-[#0F141C] border border-[#1E293B] p-4">
+              <div className="text-xs text-[#94A3B8]">Materials & Hardware</div>
               <div className="mt-1 flex items-baseline">
                 <span className="text-2xl font-mono font-semibold text-[#F1F5F9] tabular-nums">
                   {materialProfiles.length}
@@ -216,20 +239,7 @@ export const OverviewModule: React.FC = () => {
                 <span className="text-xs font-mono text-[#94A3B8] ml-1.5">batches</span>
               </div>
               <div className="mt-2 text-xs text-[#94A3B8] font-mono">
-                Clay, ceramic & polymer
-              </div>
-            </div>
-
-            <div className="bg-[#0F141C] border border-[#1E293B] p-4">
-              <div className="text-xs text-[#94A3B8]">Hardware Profiles</div>
-              <div className="mt-1 flex items-baseline">
-                <span className="text-2xl font-mono font-semibold text-[#F1F5F9] tabular-nums">
-                  {hardwareProfiles.length}
-                </span>
-                <span className="text-xs font-mono text-[#94A3B8] ml-1.5">setups</span>
-              </div>
-              <div className="mt-2 text-xs text-[#94A3B8] font-mono">
-                Robotic & desktop cells
+                {hardwareProfiles.length} configured setups
               </div>
             </div>
 
@@ -242,7 +252,7 @@ export const OverviewModule: React.FC = () => {
                 <span className="text-xs font-mono text-[#94A3B8] ml-1.5">pts</span>
               </div>
               <div className="mt-2 text-xs text-[#94A3B8] font-mono">
-                Physical specimen records
+                Stage-tagged metrology
               </div>
             </div>
 
@@ -278,11 +288,11 @@ export const OverviewModule: React.FC = () => {
             <div className="px-6 py-4 border-b border-[#1E293B] flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-[#F1F5F9]">
-                  Cross-Module Experiment & Quality Traceability
+                  Cross-Module Experiment, Node & Quality Traceability
                 </h2>
                 <p className="text-xs text-[#94A3B8] mt-0.5">
-                  Click any experiment to inspect its geometric residuals, calibration trials, or
-                  layer observations.
+                  Click any experiment to inspect its node/specimen features, geometric
+                  residuals, calibration trials, or layer observations.
                 </p>
               </div>
               <button
@@ -297,8 +307,8 @@ export const OverviewModule: React.FC = () => {
                 <thead>
                   <tr className="border-b border-[#1E293B] text-[11px] font-mono text-[#94A3B8] bg-[#0B0E14]">
                     <th className="py-3 px-4">Code</th>
-                    <th className="py-3 px-4">Title & Method</th>
-                    <th className="py-3 px-4">Material Batch</th>
+                    <th className="py-3 px-4">Title, Workflow & Group</th>
+                    <th className="py-3 px-4">Material Batch / Node</th>
                     <th className="py-3 px-4 text-right">Speed / Rel. Flow</th>
                     <th className="py-3 px-4 text-right">Bead Width RMSE</th>
                     <th className="py-3 px-4 text-right">Pass Rate</th>
@@ -308,10 +318,18 @@ export const OverviewModule: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-[#1E293B] text-xs">
                   {experiments.map((exp) => {
-                    const mat = materialProfiles.find((m) => m.id === exp.materialProfileId);
+                    const mat = materialProfiles.find(
+                      (m) => m.id === exp.materialProfileId
+                    );
+                    const nodeDesign = exp.nodeDesignId
+                      ? nodeDesigns.find((nd) => nd.id === exp.nodeDesignId)
+                      : undefined;
+                    const expSpecs = specimens.filter((s) => s.experimentId === exp.id);
                     const quality = evaluateExperimentQuality(exp, measurements);
                     const refBase = exp.referenceBaselineExperimentId
-                      ? experiments.find((e) => e.id === exp.referenceBaselineExperimentId)
+                      ? experiments.find(
+                          (e) => e.id === exp.referenceBaselineExperimentId
+                        )
                       : undefined;
                     const comparison =
                       refBase && exp.id !== refBase.id
@@ -339,11 +357,22 @@ export const OverviewModule: React.FC = () => {
                         <td className="py-3 px-4">
                           <div className="font-medium text-[#F1F5F9]">{exp.title}</div>
                           <div className="text-[11px] text-[#94A3B8] mt-0.5">
-                            {exp.baselineOrProposedMethod} · {exp.status}
+                            {exp.researchWorkflowType} · {exp.experimentGroup} ·{' '}
+                            {exp.status}
                           </div>
                         </td>
                         <td className="py-3 px-4 text-slate-300 font-mono whitespace-nowrap">
-                          {mat ? `${mat.batchIdentifier} (${mat.materialType})` : 'Unassigned'}
+                          <div>
+                            {mat
+                              ? `${mat.batchIdentifier} (${mat.materialType})`
+                              : 'Unassigned'}
+                          </div>
+                          {nodeDesign && (
+                            <div className="text-[11px] text-cyan-400">
+                              Node: {nodeDesign.nodeDesignCode}-{nodeDesign.geometryVersion}{' '}
+                              ({expSpecs.length} specs)
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-right font-mono tabular-nums whitespace-nowrap">
                           <span className="text-[#F1F5F9]">
@@ -401,15 +430,21 @@ export const OverviewModule: React.FC = () => {
                           <div className="inline-flex items-center gap-2">
                             <button
                               onClick={() =>
-                                navigateToExperimentInModule(exp.id, 'quality-inspector')
+                                navigateToExperimentInModule(
+                                  exp.id,
+                                  'quality-inspector'
+                                )
                               }
                               className="px-2.5 py-1 bg-[#151C28] hover:bg-[#1E293B] border border-[#1E293B] text-[#F1F5F9] text-[11px] font-mono cursor-pointer"
                             >
-                              Quality
+                              Quality / Node
                             </button>
                             <button
                               onClick={() =>
-                                navigateToExperimentInModule(exp.id, 'calibration-studio')
+                                navigateToExperimentInModule(
+                                  exp.id,
+                                  'calibration-studio'
+                                )
                               }
                               className="px-2.5 py-1 bg-[#151C28] hover:bg-[#1E293B] border border-[#1E293B] text-[#F1F5F9] text-[11px] font-mono cursor-pointer"
                             >
@@ -427,11 +462,11 @@ export const OverviewModule: React.FC = () => {
         </>
       )}
 
-      {/* Six Interconnected Modules Directory & Phase A Architecture Status */}
+      {/* Six Interconnected Modules Directory & v0.1.1 Status */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-[#0F141C] border border-[#1E293B] p-6">
           <h2 className="text-base font-semibold text-[#F1F5F9] mb-4">
-            Integrated Research Modules (Shared Data Repository)
+            Integrated Research Modules (Shared 17-Entity Repository)
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
@@ -440,14 +475,14 @@ export const OverviewModule: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-cyan-400">01. EXPERIMENT LAB</span>
-                <span className="text-[11px] font-mono text-emerald-400">● Phase A Core</span>
+                <span className="text-[11px] font-mono text-emerald-400">● v0.1.1 Core</span>
               </div>
               <div className="text-sm font-semibold text-[#F1F5F9] mt-1">
-                Registry, 7-Step Wizard & Profiles
+                Registry, Node Designs, Specimen Registry & Pilot Planner
               </div>
               <p className="text-xs text-[#94A3B8] mt-1">
-                Create and compare experiments, configure Material & Hardware profiles, and
-                separate relative flow % from physical volumetric flow rates.
+                Create experiments, manage Node Designs & Feature Definitions, register
+                replicate specimens, and plan Group 1 & Group 2 pilot studies.
               </p>
             </button>
 
@@ -457,14 +492,17 @@ export const OverviewModule: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-cyan-400">02. QUALITY INSPECTOR</span>
-                <span className="text-[11px] font-mono text-emerald-400">● Phase A Core</span>
+                <span className="text-[11px] font-mono text-emerald-400">
+                  ● Node & Extrusion
+                </span>
               </div>
               <div className="text-sm font-semibold text-[#F1F5F9] mt-1">
-                Metrological Verification & Schematic View
+                Extrusion Inspection & Node / Joint Metrology
               </div>
               <p className="text-xs text-[#94A3B8] mt-1">
-                Log verified physical measurements, evaluate RMSE/pass rates, withhold Cp/Cpk
-                unless n≥25 stability is met, and distinguish schematic vs. scanned geometry.
+                Switch between Extrusion Inspection and Node / Joint Inspection with
+                GREEN/DRY/FIRED stage tracking, shrinkage calculation, and physical
+                assembly fit verification.
               </p>
             </button>
 
@@ -477,11 +515,11 @@ export const OverviewModule: React.FC = () => {
                 <span className="text-[11px] font-mono text-emerald-400">● Deterministic</span>
               </div>
               <div className="text-sm font-semibold text-[#F1F5F9] mt-1">
-                Bounds Checking & Empirical Trials
+                Checkpoint Recalibration & Node Target Metrics
               </div>
               <p className="text-xs text-[#94A3B8] mt-1">
-                Separate observed experimental trials from unvalidated candidates. Enforce
-                parameter bounds and require ≥3 empirical trials before interpolation.
+                Compare Group 1 (Fixed Baseline) vs. Group 2 (Checkpoint Recalibration)
+                across bead width, socket diameter, and joint axis angle targets.
               </p>
             </button>
 
@@ -494,11 +532,11 @@ export const OverviewModule: React.FC = () => {
                 <span className="text-[11px] font-mono text-amber-400">▲ Sync-Guarded</span>
               </div>
               <div className="text-sm font-semibold text-[#F1F5F9] mt-1">
-                Layer Observations & Alignment Guard
+                Specimen-Filtered Observations & Checkpoint Events
               </div>
               <p className="text-xs text-[#94A3B8] mt-1">
-                Inspect layer-indexed observations with explicit clock synchronization and
-                coordinate-frame consistency checks prior to stream correlation.
+                Filter process streams by specimen, annotate checkpoint inspections and
+                parameter adjustments, and enforce clock/frame alignment guards.
               </p>
             </button>
 
@@ -511,11 +549,11 @@ export const OverviewModule: React.FC = () => {
                 <span className="text-[11px] font-mono text-emerald-400">● Traceable</span>
               </div>
               <div className="text-sm font-semibold text-[#F1F5F9] mt-1">
-                Citations, Evidence Levels & Experiment Links
+                Ceramic Node, Shrinkage & Robotic Clay Literature
               </div>
               <p className="text-xs text-[#94A3B8] mt-1">
-                Manage literature references with DOI verification status, methodological
-                categories, and direct links to experiments.
+                Curate references across Ceramic Additive Manufacturing, Shrinkage &
+                Drying Behavior, Structural Nodes, and Feedforward/Checkpoint Control.
               </p>
             </button>
 
@@ -525,23 +563,23 @@ export const OverviewModule: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono text-cyan-400">06. INDUSTRY METRICS</span>
-                <span className="text-[11px] font-mono text-emerald-400">● Empirical Yield</span>
+                <span className="text-[11px] font-mono text-emerald-400">● Stage Yield</span>
               </div>
               <div className="text-sm font-semibold text-[#F1F5F9] mt-1">
-                Yield, Scrap Waste & Cycle Time Accounting
+                GREEN / DRY / FIRED / Assembly Yield & Cycle Time
               </div>
               <p className="text-xs text-[#94A3B8] mt-1">
-                Compare accepted/rejected part counts, calibration pause overhead, and manual
-                cost inputs between baseline and recalibrated runs.
+                Track stage-separated acceptance counts, rework counts, and accepted
+                specimens per active print hour, booked cell hour, and complete process time.
               </p>
             </button>
           </div>
         </div>
 
-        {/* Phase A Implementation & Scientific Safeguards Summary */}
+        {/* v0.1.1 Implementation & Scientific Safeguards Summary */}
         <div className="bg-[#0F141C] border border-[#1E293B] p-6 space-y-4">
           <div className="text-xs font-mono text-cyan-400">
-            IMPLEMENTATION STATUS — v0.1.0 (PHASE A)
+            IMPLEMENTATION STATUS — v0.1.1 (SCHEMA v2)
           </div>
           <h2 className="text-base font-semibold text-[#F1F5F9]">
             Verified Capabilities & Deferred Scope
@@ -549,16 +587,16 @@ export const OverviewModule: React.FC = () => {
           <div className="space-y-3 text-xs">
             <div>
               <div className="font-mono text-emerald-400 mb-1">
-                ● FUNCTIONAL & VERIFIED IN PHASE A
+                ● FUNCTIONAL & VERIFIED IN v0.1.1
               </div>
               <ul className="space-y-1 text-[#94A3B8]">
-                <li>· Canonical 13-entity IndexedDB repository with audit log</li>
-                <li>· Experiment Lab: Registry, 7-step Wizard, Comparison & CRUD</li>
-                <li>· Configurable Material & Hardware Profiles (Planned/Available/Configured/Connected)</li>
-                <li>· Numerical Quality Inspector with schematic vs. scanned profile distinction & Cp/Cpk n≥25 guard</li>
-                <li>· Deterministic Calibration Studio separating observed trials from candidates</li>
-                <li>· Versioned JSON backup/restore & CSV measurement import/export</li>
-                <li>· Non-destructive sample dataset loader/remover (never deletes user research data)</li>
+                <li>· Canonical 17-entity IndexedDB repository (non-destructive v1→v2 upgrade)</li>
+                <li>· NodeDesign, NodeFeatureDefinition, Specimen & AssemblyVerification entities</li>
+                <li>· Physical stage tracking (GREEN, DRY, FIRED, Stage Unknown, Custom)</li>
+                <li>· Deterministic linear shrinkage, symmetric/asymmetric tolerance & clearance</li>
+                <li>· Dual-mode Quality Inspector (Extrusion + Node/Joint Schematic & Fit Test)</li>
+                <li>· 10-specimen Pilot Study Planner & stage-separated Industry Metrics</li>
+                <li>· Backward-compatible v0.1.0 & v0.1.1 CSV/JSON import/export</li>
               </ul>
             </div>
             <div className="pt-2 border-t border-[#1E293B]">
