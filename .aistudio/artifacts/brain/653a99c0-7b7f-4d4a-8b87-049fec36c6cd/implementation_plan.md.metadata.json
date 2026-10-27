@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for Fabrication Research OS (v0.1.0), an integrated scientific research platform for adaptive robotic additive manufacturing, covering the six core modules, shared scientific data model, IndexedDB repository layer, and scientific workstation UI design.",
-  "updatedAt": "2026-10-19T12:59:08.928117818Z",
-  "requestFeedback": true,
-  "userFacing": true
+  "summary":  "v0.1.1 (Schema v2 - 17 Entity) doğrulama ve test betiği güncelleme planı + sonraki aşama Quality Inspector (Node & Joint Inspection) yol haritası.",
+  "updatedAt":  "2026-10-27T15:03:31.211365544Z",
+  "requestFeedback":  true,
+  "userFacing":  true
 }

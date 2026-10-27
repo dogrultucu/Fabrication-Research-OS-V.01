@@ -41,7 +41,7 @@ export const ProcessExplorerModule: React.FC = () => {
   const [obsUnit, setObsUnit] = useState<string>('kPa');
   const [obsSource, setObsSource] = useState<string>('Regulator Gauge Manual Log');
   const [obsClockStatus, setObsClockStatus] = useState<
-    'Synchronized NTP/PTP' | 'Manual Offset Aligned' | 'Unsynchronized Local Clock'
+    'Synchronized NTP/PTP' | 'Manual Offset Aligned' | 'Unsynchronized Local Clock' | 'Unknown Synchronization'
   >('Manual Offset Aligned');
   const [obsClockOffset, setObsClockOffset] = useState<number>(0);
   const [obsCoordFrame, setObsCoordFrame] = useState<string>('wobjPrintTable_01');

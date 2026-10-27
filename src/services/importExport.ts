@@ -1,6 +1,5 @@
 import {
   APP_VERSION,
-  AssemblyVerification,
   AssemblyVerificationSchema,
   AuditEventSchema,
   CalibrationSessionSchema,
@@ -14,9 +13,7 @@ import {
   MeasurementSchema,
   MeasurementSourceTypeEnum,
   MeasurementTypeEnum,
-  NodeDesign,
   NodeDesignSchema,
-  NodeFeatureDefinition,
   NodeFeatureDefinitionSchema,
   PhysicalStageEnum,
   ProcessObservationSchema,
@@ -26,7 +23,6 @@ import {
   ResearchReferenceSchema,
   ResearchWorkspaceSnapshot,
   SCHEMA_VERSION,
-  Specimen,
   SpecimenSchema,
 } from '../domain/models';
 
@@ -99,29 +95,20 @@ export function splitCsvLine(line: string): string[] {
   return result;
 }
 
-const escapeCsv = (val: unknown) => {
-  const str = val === null || val === undefined ? '' : String(val);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-};
-
 export function exportExperimentsToCsv(experiments: Experiment[]): string {
   const headers = [
     'experimentCode',
     'title',
-    'status',
     'researchWorkflowType',
     'experimentGroup',
+    'status',
     'experimentType',
     'baselineOrProposedMethod',
     'nodeDesignId',
     'geometryVersion',
-    'materialProfileId',
-    'materialBatchIdentifier',
-    'hardwareProfileId',
     'plannedSpecimenCount',
+    'materialProfileId',
+    'hardwareProfileId',
     'printSpeedMmPerSec',
     'relativeFlowPercent',
     'volumetricFlowValue',
@@ -133,20 +120,27 @@ export function exportExperimentsToCsv(experiments: Experiment[]): string {
     'operator',
   ];
 
+  const escapeCsv = (val: unknown) => {
+    const str = val === null || val === undefined ? '' : String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
   const rows = experiments.map((e) => [
     e.experimentCode,
     e.title,
+    e.researchWorkflowType || 'General Extrusion Research',
+    e.experimentGroup || '',
     e.status,
-    e.researchWorkflowType ?? 'General Extrusion Experiment',
-    e.experimentGroup ?? 'Custom Experiment Group',
     e.experimentType,
     e.baselineOrProposedMethod,
-    e.nodeDesignId ?? '',
-    e.geometryVersion ?? '',
+    e.nodeDesignId || '',
+    e.geometryVersion || '',
+    e.plannedSpecimenCount ?? 1,
     e.materialProfileId,
-    e.materialBatchIdentifier ?? '',
     e.hardwareProfileId,
-    e.plannedSpecimenCount ?? '',
     e.processParameters.printSpeedMmPerSec,
     e.processParameters.relativeFlowPercent,
     e.processParameters.volumetricFlowValue ?? '',
@@ -156,144 +150,6 @@ export function exportExperimentsToCsv(experiments: Experiment[]): string {
     e.processParameters.nozzleDiameterMm,
     e.plannedDate,
     e.operator,
-  ]);
-
-  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
-}
-
-export function exportNodeDesignsToCsv(
-  nodeDesigns: NodeDesign[],
-  features: NodeFeatureDefinition[]
-): string {
-  const headers = [
-    'id',
-    'nodeDesignCode',
-    'geometryVersion',
-    'title',
-    'nodeType',
-    'branchCount',
-    'nominalAnglesDeg',
-    'nominalWallThicknessMm',
-    'nominalHeightMm',
-    'nominalFootprintMm',
-    'matingComponentType',
-    'targetAssemblyClearanceMm',
-    'targetStageForNominalDimensions',
-    'expectedLinearShrinkageWetToDryPercent',
-    'expectedLinearShrinkageDryToFiredPercent',
-    'featureCount',
-  ];
-
-  const rows = nodeDesigns.map((nd) => {
-    const fCount = features.filter((f) => f.nodeDesignId === nd.id).length;
-    return [
-      nd.id,
-      nd.nodeDesignCode,
-      nd.geometryVersion,
-      nd.title,
-      nd.nodeType,
-      nd.branchCount,
-      nd.nominalAnglesDeg.join(';'),
-      nd.nominalWallThicknessMm,
-      nd.nominalHeightMm,
-      nd.nominalFootprintMm,
-      nd.matingComponentType,
-      nd.targetAssemblyClearanceMm,
-      nd.targetStageForNominalDimensions,
-      nd.expectedLinearShrinkageWetToDryPercent ?? '',
-      nd.expectedLinearShrinkageDryToFiredPercent ?? '',
-      fCount,
-    ];
-  });
-
-  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
-}
-
-export function exportSpecimensToCsv(specimens: Specimen[]): string {
-  const headers = [
-    'id',
-    'specimenCode',
-    'experimentId',
-    'nodeDesignId',
-    'geometryVersion',
-    'replicateNumber',
-    'fabricationDate',
-    'materialBatchIdentifier',
-    'hardwareProfileId',
-    'processParameterSetId',
-    'currentPhysicalStage',
-    'currentStatus',
-    'acceptanceStatus',
-    'operator',
-    'notes',
-  ];
-
-  const rows = specimens.map((s) => [
-    s.id,
-    s.specimenCode,
-    s.experimentId,
-    s.nodeDesignId ?? '',
-    s.geometryVersion ?? '',
-    s.replicateNumber,
-    s.fabricationDate,
-    s.materialBatchIdentifier,
-    s.hardwareProfileId,
-    s.processParameterSetId,
-    s.currentPhysicalStage,
-    s.currentStatus,
-    s.acceptanceStatus,
-    s.operator,
-    s.notes ?? '',
-  ]);
-
-  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
-}
-
-export function exportAssemblyVerificationsToCsv(
-  verifications: AssemblyVerification[]
-): string {
-  const headers = [
-    'id',
-    'specimenId',
-    'experimentId',
-    'nodeDesignId',
-    'featureId',
-    'physicalStageAtTest',
-    'matingMemberType',
-    'nominalMemberDimensionMm',
-    'actualMemberDimensionMm',
-    'measuredSocketDimensionMm',
-    'computedClearanceMm',
-    'insertionResult',
-    'measuredAngularDeviationDeg',
-    'measuredInsertionDepthMm',
-    'targetInsertionDepthMm',
-    'structuralStabilityNotes',
-    'passFailStatus',
-    'verifiedBy',
-    'verifiedAt',
-  ];
-
-  const rows = verifications.map((v) => [
-    v.id,
-    v.specimenId,
-    v.experimentId,
-    v.nodeDesignId ?? '',
-    v.featureId ?? '',
-    v.physicalStageAtTest,
-    v.matingMemberType,
-    v.nominalMemberDimensionMm,
-    v.actualMemberDimensionMm,
-    v.measuredSocketDimensionMm ?? '',
-    v.computedClearanceMm ?? '',
-    v.insertionResult,
-    v.measuredAngularDeviationDeg ?? '',
-    v.measuredInsertionDepthMm,
-    v.targetInsertionDepthMm,
-    v.structuralStabilityNotes ?? '',
-    v.passFailStatus,
-    v.verifiedBy,
-    v.verifiedAt,
   ]);
 
   return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
@@ -334,6 +190,14 @@ export function exportMeasurementsToCsv(measurements: Measurement[]): string {
     'timestamp',
   ];
 
+  const escapeCsv = (val: unknown) => {
+    const str = val === null || val === undefined ? '' : String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
   const rows = measurements.map((m) => [
     m.id,
     m.experimentId,
@@ -343,7 +207,7 @@ export function exportMeasurementsToCsv(measurements: Measurement[]): string {
     m.geometryVersion ?? '',
     m.featureId ?? '',
     m.physicalStage ?? 'Stage Unknown',
-    m.targetStage ?? '',
+    m.targetStage ?? 'Stage Unknown',
     m.layerIndex ?? '',
     m.xCoordMm ?? '',
     m.yCoordMm ?? '',
@@ -353,8 +217,8 @@ export function exportMeasurementsToCsv(measurements: Measurement[]): string {
     m.measuredValue,
     m.targetValue,
     m.tolerance,
-    m.toleranceLower ?? '',
-    m.toleranceUpper ?? '',
+    m.toleranceLower ?? m.lowerTolerance ?? '',
+    m.toleranceUpper ?? m.upperTolerance ?? '',
     m.unit,
     m.sourceType,
     m.verifiedPhysicalMeasurement,
@@ -383,11 +247,11 @@ function parseStrictFiniteNumber(raw: string): number {
 }
 
 /**
- * Parses a CSV file of physical measurements and validates each row with Zod.
- * Supports both v0.1.0 camelCase headers and v0.1.1 snake_case / node-feature headers.
- * Preserves unit, customMeasurementLabel, spatial coordinates, physicalStage (defaulting to
- * 'Stage Unknown' when absent — NEVER defaulting legacy records to 'GREEN'), toleranceLower/Upper,
- * sourceType, and verifiedPhysicalMeasurement provenance on round-trip imports.
+ * Parses a CSV file of physical or node feature measurements and validates each row with Zod.
+ * Supports both v0.1.0 camelCase headers and v0.1.1 snake_case ceramic node headers:
+ * experiment_id, specimen_id, node_design_id, geometry_version, feature_id, physical_stage,
+ * measurement_type, nominal_value, measured_value, unit, tolerance_lower, tolerance_upper,
+ * acquisition_method, coordinate_frame, timestamp, uncertainty, notes.
  */
 export function parseMeasurementsCsv(
   csvText: string,
@@ -408,7 +272,7 @@ export function parseMeasurementsCsv(
   }
 
   const rawHeaders = splitCsvLine(lines[0]);
-  const colIndexAny = (names: string[]) => {
+  const colIndex = (...names: string[]) => {
     for (const name of names) {
       const idx = rawHeaders.findIndex((h) => h.toLowerCase() === name.toLowerCase());
       if (idx >= 0) return idx;
@@ -423,16 +287,16 @@ export function parseMeasurementsCsv(
   for (let i = 1; i < lines.length; i++) {
     const rowValues = splitCsvLine(lines[i]);
     const getVal = (names: string | string[], fallback = '') => {
-      const list = Array.isArray(names) ? names : [names];
-      const idx = colIndexAny(list);
+      const nameList = Array.isArray(names) ? names : [names];
+      const idx = colIndex(...nameList);
       return idx >= 0 && idx < rowValues.length ? rowValues[idx] : fallback;
     };
 
     const rawMeasuredStr = getVal(['measuredValue', 'measured_value'], '');
-    const rawTargetStr = getVal(['targetValue', 'target_value'], '');
-    const rawTolLowerStr = getVal(['toleranceLower', 'tolerance_lower'], '');
-    const rawTolUpperStr = getVal(['toleranceUpper', 'tolerance_upper'], '');
-    const rawTolStr = getVal(['tolerance'], '');
+    const rawTargetStr = getVal(['targetValue', 'nominal_value', 'nominalValue'], '');
+    const rawTolLowerStr = getVal(['toleranceLower', 'lowerTolerance', 'tolerance_lower'], '');
+    const rawTolUpperStr = getVal(['toleranceUpper', 'upperTolerance', 'tolerance_upper'], '');
+    const rawTolStr = getVal(['tolerance', 'tolerancePlusMinus'], '');
 
     const measuredValue = parseStrictFiniteNumber(rawMeasuredStr);
     const targetValue = parseStrictFiniteNumber(rawTargetStr);
@@ -442,37 +306,29 @@ export function parseMeasurementsCsv(
       continue;
     }
     if (!Number.isFinite(targetValue)) {
-      errors.push(`Row ${i + 1}: Missing or non-numeric targetValue ("${rawTargetStr}").`);
+      errors.push(`Row ${i + 1}: Missing or non-numeric targetValue/nominal_value ("${rawTargetStr}").`);
       continue;
     }
 
     let toleranceLower: number | undefined;
     let toleranceUpper: number | undefined;
+
     if (rawTolLowerStr !== '') {
-      const num = parseStrictFiniteNumber(rawTolLowerStr);
-      if (!Number.isFinite(num)) {
-        errors.push(`Row ${i + 1}: toleranceLower must be a finite number ("${rawTolLowerStr}").`);
+      const parsedLower = parseStrictFiniteNumber(rawTolLowerStr);
+      if (!Number.isFinite(parsedLower)) {
+        errors.push(`Row ${i + 1}: Invalid toleranceLower ("${rawTolLowerStr}").`);
         continue;
       }
-      toleranceLower = num;
+      toleranceLower = parsedLower <= 0 ? parsedLower : -Math.abs(parsedLower);
     }
+
     if (rawTolUpperStr !== '') {
-      const num = parseStrictFiniteNumber(rawTolUpperStr);
-      if (!Number.isFinite(num)) {
-        errors.push(`Row ${i + 1}: toleranceUpper must be a finite number ("${rawTolUpperStr}").`);
+      const parsedUpper = parseStrictFiniteNumber(rawTolUpperStr);
+      if (!Number.isFinite(parsedUpper) || parsedUpper < 0) {
+        errors.push(`Row ${i + 1}: Invalid toleranceUpper ("${rawTolUpperStr}").`);
         continue;
       }
-      toleranceUpper = num;
-    }
-    if (
-      toleranceLower !== undefined &&
-      toleranceUpper !== undefined &&
-      toleranceLower > toleranceUpper
-    ) {
-      errors.push(
-        `Row ${i + 1}: toleranceLower (${toleranceLower}) cannot exceed toleranceUpper (${toleranceUpper}).`
-      );
-      continue;
+      toleranceUpper = parsedUpper;
     }
 
     let tolerance: number;
@@ -483,13 +339,20 @@ export function parseMeasurementsCsv(
         continue;
       }
     } else if (toleranceLower !== undefined || toleranceUpper !== undefined) {
-      tolerance = Math.max(
+      const maxSpan = Math.max(
         Math.abs(toleranceLower ?? 0),
-        Math.abs(toleranceUpper ?? 0),
-        0.001
+        Math.abs(toleranceUpper ?? 0)
       );
+      if (maxSpan <= 0) {
+        errors.push(`Row ${i + 1}: Tolerance span must be positive.`);
+        continue;
+      }
+      tolerance = maxSpan;
     } else {
-      tolerance = 0.5;
+      errors.push(
+        `Row ${i + 1}: Missing tolerance specification (provide tolerance or toleranceLower/toleranceUpper).`
+      );
+      continue;
     }
 
     const rawType = getVal(['measurementType', 'measurement_type'], 'bead width');
@@ -497,36 +360,27 @@ export function parseMeasurementsCsv(
     const measurementType = parsedTypeResult.success
       ? parsedTypeResult.data
       : 'custom measurement';
-    const explicitCustomLabel = getVal(
-      ['customMeasurementLabel', 'custom_measurement_label'],
-      ''
-    );
+    const explicitCustomLabel = getVal('customMeasurementLabel', '');
     const customMeasurementLabel =
       explicitCustomLabel || (!parsedTypeResult.success ? rawType : undefined);
 
-    // Physical stage: default to 'Stage Unknown' when omitted in legacy CSVs
-    const rawStage = getVal(['physicalStage', 'physical_stage'], '');
-    let physicalStage: Measurement['physicalStage'] = 'Stage Unknown';
-    if (rawStage !== '') {
-      const stageNorm = rawStage.trim();
-      const stageParse = PhysicalStageEnum.safeParse(stageNorm);
-      if (!stageParse.success) {
-        errors.push(
-          `Row ${i + 1}: Invalid physicalStage "${rawStage}". Allowed: GREEN, DRY, FIRED, Stage Unknown, Custom.`
-        );
-        continue;
-      }
-      physicalStage = stageParse.data;
+    const rawPhysStage = getVal(['physicalStage', 'physical_stage'], 'Stage Unknown');
+    const parsedPhysStage = PhysicalStageEnum.safeParse(rawPhysStage);
+    if (rawPhysStage !== '' && !parsedPhysStage.success) {
+      errors.push(
+        `Row ${i + 1}: Invalid physical_stage "${rawPhysStage}". Expected GREEN, DRY, FIRED, Stage Unknown, or Custom.`
+      );
+      continue;
     }
+    const physicalStage = parsedPhysStage.success ? parsedPhysStage.data : 'Stage Unknown';
 
     const rawTargetStage = getVal(['targetStage', 'target_stage'], '');
-    let targetStage: Measurement['targetStage'] = undefined;
-    if (rawTargetStage !== '') {
-      const targetStageParse = PhysicalStageEnum.safeParse(rawTargetStage.trim());
-      if (targetStageParse.success) {
-        targetStage = targetStageParse.data;
-      }
-    }
+    const parsedTargetStage = PhysicalStageEnum.safeParse(rawTargetStage);
+    const targetStage = parsedTargetStage.success
+      ? parsedTargetStage.data
+      : physicalStage !== 'Stage Unknown'
+      ? physicalStage
+      : 'Stage Unknown';
 
     const layerIdxRaw = getVal(['layerIndex', 'layer_index'], '');
     const layerIndex =
@@ -547,15 +401,12 @@ export function parseMeasurementsCsv(
       return { ok: true, val: num };
     };
 
-    const xRes = parseOptionalCoord(['xCoordMm', 'x_coord_mm']);
-    const yRes = parseOptionalCoord(['yCoordMm', 'y_coord_mm']);
-    const zRes = parseOptionalCoord(['zCoordMm', 'z_coord_mm']);
+    const xRes = parseOptionalCoord(['xCoordMm', 'x_coord_mm', 'xMm']);
+    const yRes = parseOptionalCoord(['yCoordMm', 'y_coord_mm', 'yMm']);
+    const zRes = parseOptionalCoord(['zCoordMm', 'z_coord_mm', 'zMm']);
     if (!xRes.ok || !yRes.ok || !zRes.ok) continue;
 
-    const uncertaintyRaw = getVal(
-      ['standardUncertainty', 'standard_uncertainty', 'uncertainty'],
-      '0.05'
-    );
+    const uncertaintyRaw = getVal(['standardUncertainty', 'uncertainty'], '0.05');
     const uncertainty =
       uncertaintyRaw !== '' ? parseStrictFiniteNumber(uncertaintyRaw) : 0.05;
     if (!Number.isFinite(uncertainty) || uncertainty < 0) {
@@ -579,15 +430,11 @@ export function parseMeasurementsCsv(
       continue;
     }
 
-    // Preserve provenance if provided in CSV; never elevate AI-Assisted or Computed to verifiedPhysicalMeasurement = true
     const rawSourceType = getVal(['sourceType', 'source_type'], 'Imported');
     const parsedSourceResult = MeasurementSourceTypeEnum.safeParse(rawSourceType);
     const sourceType = parsedSourceResult.success ? parsedSourceResult.data : 'Imported';
 
-    const rawVerifiedStr = getVal(
-      ['verifiedPhysicalMeasurement', 'verified_physical_measurement'],
-      ''
-    ).toLowerCase();
+    const rawVerifiedStr = getVal('verifiedPhysicalMeasurement', '').toLowerCase();
     let verifiedPhysicalMeasurement =
       sourceType === 'Manual' || sourceType === 'Imported';
     if (rawVerifiedStr === 'false' || rawVerifiedStr === '0') {
@@ -600,29 +447,33 @@ export function parseMeasurementsCsv(
       verifiedPhysicalMeasurement = false;
     }
 
-    const unitStr = getVal(['unit'], '');
+    const unitStr = getVal('unit', '');
     if (!unitStr) {
       errors.push(`Row ${i + 1}: Explicit physical unit is required.`);
       continue;
     }
 
-    const candidateId = getVal(['id'], '') || `meas-imp-${Date.now()}-${i}`;
+    const candidateId = getVal('id', '') || `meas-imp-${Date.now()}-${i}`;
     if (seenBatchIds.has(candidateId)) {
       errors.push(`Row ${i + 1}: Duplicate measurement id "${candidateId}" in CSV batch.`);
       continue;
     }
     seenBatchIds.add(candidateId);
 
-    const rowExpId = getVal(['experimentId', 'experiment_id'], '') || targetExperimentId;
+    const specimenRecordId =
+      getVal(['specimenRecordId', 'specimen_record_id'], '') || undefined;
+    const nodeDesignId = getVal(['nodeDesignId', 'node_design_id'], '') || undefined;
+    const geometryVersion = getVal(['geometryVersion', 'geometry_version'], '') || undefined;
+    const featureId = getVal(['featureId', 'feature_id'], '') || undefined;
 
     const candidate: Measurement = {
       id: candidateId,
-      experimentId: targetExperimentId || rowExpId,
+      experimentId: targetExperimentId,
       specimenId: getVal(['specimenId', 'specimen_id'], '') || `SPEC-IMP-${i}`,
-      specimenRecordId: getVal(['specimenRecordId', 'specimen_record_id'], '') || undefined,
-      nodeDesignId: getVal(['nodeDesignId', 'node_design_id'], '') || undefined,
-      geometryVersion: getVal(['geometryVersion', 'geometry_version'], '') || undefined,
-      featureId: getVal(['featureId', 'feature_id'], '') || undefined,
+      specimenRecordId,
+      nodeDesignId,
+      geometryVersion,
+      featureId,
       physicalStage,
       targetStage,
       layerIndex,
@@ -637,13 +488,14 @@ export function parseMeasurementsCsv(
       tolerance,
       toleranceLower,
       toleranceUpper,
-      timestamp:
-        getVal(['timestamp', 'measurement_timestamp'], '') || new Date().toISOString(),
+      lowerTolerance: toleranceLower,
+      upperTolerance: toleranceUpper,
+      timestamp: getVal('timestamp', '') || new Date().toISOString(),
       sourceType,
       verifiedPhysicalMeasurement,
       profileGeometryType: 'Scalar Point Measurement (Schematic Only)',
       acquisitionMethod:
-        getVal(['acquisitionMethod', 'measurement_method'], '') || 'CSV Instrument Import',
+        getVal(['acquisitionMethod', 'acquisition_method'], '') || 'CSV Instrument Import',
       algorithmVersion: getVal(['algorithmVersion', 'algorithm_version'], '') || 'csv-import-v2',
       coordinateFrame:
         getVal(['coordinateFrame', 'coordinate_frame'], '') || 'wobjPrintTable_01',
@@ -653,7 +505,7 @@ export function parseMeasurementsCsv(
         calibrationRef: getVal(['calibrationRef', 'calibration_ref'], '') || 'IMPORTED-CSV',
       },
       sourceFileId,
-      notes: getVal(['notes'], '') || undefined,
+      notes: getVal('notes', '') || undefined,
       isSampleFixture: false,
     };
 
@@ -680,8 +532,9 @@ export interface BackupValidationResult {
 }
 
 /**
- * Validates and non-destructively migrates a JSON workspace backup snapshot (v0.1.0 Schema v1 -> v0.1.1 Schema v2),
+ * Validates and non-destructively migrates a JSON workspace backup snapshot (v1 -> v2),
  * enforcing entity-level Zod validation and cross-entity relational integrity across all 17 entities.
+ * Never fabricates GREEN stage labels for legacy v0.1.0 measurements: missing physicalStage defaults to 'Stage Unknown'.
  */
 export function validateAndMigrateWorkspaceSnapshot(
   rawJson: string
@@ -711,7 +564,7 @@ export function validateAndMigrateWorkspaceSnapshot(
     }
 
     const incomingVersion =
-      typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : 0;
+      typeof parsed.schemaVersion === 'number' ? parsed.schemaVersion : 1;
 
     const validateArray = <T>(
       arr: unknown,
@@ -774,8 +627,19 @@ export function validateAndMigrateWorkspaceSnapshot(
       NodeFeatureDefinitionSchema,
       'nodeFeatureDefinitions'
     );
+    const normalizedRawExperiments = Array.isArray(parsed.experiments)
+      ? parsed.experiments.map((e: any) =>
+          incomingVersion === 1 && e && typeof e === 'object'
+            ? {
+                ...e,
+                researchWorkflowType:
+                  e.researchWorkflowType || 'General Extrusion Research',
+              }
+            : e
+        )
+      : parsed.experiments;
     const experiments = validateArray(
-      parsed.experiments,
+      normalizedRawExperiments,
       ExperimentSchema,
       'experiments'
     );
@@ -789,8 +653,18 @@ export function validateAndMigrateWorkspaceSnapshot(
       ProcessParameterSetSchema,
       'processParameterSets'
     );
+    const normalizedRawMeasurements = Array.isArray(parsed.measurements)
+      ? parsed.measurements.map((m: any) =>
+          m && typeof m === 'object'
+            ? {
+                ...m,
+                physicalStage: m.physicalStage || 'Stage Unknown',
+              }
+            : m
+        )
+      : parsed.measurements;
     const measurements = validateArray(
-      parsed.measurements,
+      normalizedRawMeasurements,
       MeasurementSchema,
       'measurements'
     );
@@ -841,13 +715,15 @@ export function validateAndMigrateWorkspaceSnapshot(
     const nodeDesignIds = new Set(nodeDesigns.map((nd) => nd.id));
     const expIds = new Set(experiments.map((e) => e.id));
     const specIds = new Set(specimens.map((s) => s.id));
+    const specCodes = new Set(specimens.map((s) => s.specimenCode));
     const sessIds = new Set(calibrationSessions.map((s) => s.id));
     const seenExpCodes = new Set<string>();
 
     for (const feat of nodeFeatureDefinitions) {
-      if (!nodeDesignIds.has(feat.nodeDesignId)) {
+      const parentId = feat.nodeDesignRecordId || feat.nodeDesignId;
+      if (parentId && !nodeDesignIds.has(parentId)) {
         errors.push(
-          `Relational Integrity Error: NodeFeatureDefinition "${feat.featureCode}" references missing nodeDesignId "${feat.nodeDesignId}".`
+          `Relational Integrity Error: NodeFeatureDefinition "${feat.featureCode || feat.featureId}" references missing NodeDesign "${parentId}".`
         );
       }
     }
@@ -871,17 +747,17 @@ export function validateAndMigrateWorkspaceSnapshot(
           `Relational Integrity Error: Experiment "${exp.experimentCode}" references missing hardwareProfileId "${exp.hardwareProfileId}".`
         );
       }
+      if (exp.nodeDesignId && !nodeDesignIds.has(exp.nodeDesignId)) {
+        errors.push(
+          `Relational Integrity Error: Experiment "${exp.experimentCode}" references missing nodeDesignId "${exp.nodeDesignId}".`
+        );
+      }
       if (
         exp.referenceBaselineExperimentId &&
         !expIds.has(exp.referenceBaselineExperimentId)
       ) {
         errors.push(
           `Relational Integrity Error: Experiment "${exp.experimentCode}" references missing referenceBaselineExperimentId "${exp.referenceBaselineExperimentId}".`
-        );
-      }
-      if (exp.nodeDesignId && !nodeDesignIds.has(exp.nodeDesignId)) {
-        errors.push(
-          `Relational Integrity Error: Experiment "${exp.experimentCode}" references missing nodeDesignId "${exp.nodeDesignId}".`
         );
       }
     }
@@ -905,6 +781,11 @@ export function validateAndMigrateWorkspaceSnapshot(
           `Relational Integrity Error: Measurement "${meas.id}" references missing experimentId "${meas.experimentId}".`
         );
       }
+      if (meas.specimenRecordId && !specIds.has(meas.specimenRecordId)) {
+        errors.push(
+          `Relational Integrity Error: Measurement "${meas.id}" references missing specimenRecordId "${meas.specimenRecordId}".`
+        );
+      }
     }
 
     for (const assm of assemblyVerifications) {
@@ -913,7 +794,24 @@ export function validateAndMigrateWorkspaceSnapshot(
           `Relational Integrity Error: AssemblyVerification "${assm.id}" references missing experimentId "${assm.experimentId}".`
         );
       }
-      if (!specIds.has(assm.specimenId)) {
+      if (assm.nodeDesignId && !nodeDesignIds.has(assm.nodeDesignId)) {
+        errors.push(
+          `Relational Integrity Error: AssemblyVerification "${assm.id}" references missing nodeDesignId "${assm.nodeDesignId}".`
+        );
+      }
+      if (
+        assm.specimenRecordId &&
+        !specIds.has(assm.specimenRecordId)
+      ) {
+        errors.push(
+          `Relational Integrity Error: AssemblyVerification "${assm.id}" references missing specimenRecordId "${assm.specimenRecordId}".`
+        );
+      } else if (
+        !assm.specimenRecordId &&
+        assm.specimenId &&
+        !specIds.has(assm.specimenId) &&
+        !specCodes.has(assm.specimenId)
+      ) {
         errors.push(
           `Relational Integrity Error: AssemblyVerification "${assm.id}" references missing specimenId "${assm.specimenId}".`
         );
@@ -966,7 +864,6 @@ export function validateAndMigrateWorkspaceSnapshot(
       return { valid: false, errors };
     }
 
-    // Ensure processParameterSets is synchronized with experiments
     const ppsMap = new Map(rawProcessParameterSets.map((p) => [p.id, p]));
     for (const exp of experiments) {
       ppsMap.set(exp.processParameters.id, exp.processParameters);
@@ -1015,4 +912,124 @@ export function validateAndMigrateWorkspaceSnapshot(
       ],
     };
   }
+}
+
+export function exportNodeDesignsToCsv(
+  nodeDesigns: Array<import('../domain/models').NodeDesign>,
+  _features?: Array<import('../domain/models').NodeFeatureDefinition>
+): string {
+  const headers = [
+    'id',
+    'nodeDesignCode',
+    'geometryVersion',
+    'title',
+    'geometrySource',
+    'coordinateSystem',
+    'unitSystem',
+    'intendedMaterialType',
+    'notes',
+    'createdAt',
+  ];
+  const escapeCsv = (val: unknown) => {
+    const str = val === null || val === undefined ? '' : String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+  const rows = nodeDesigns.map((n) => [
+    n.id,
+    n.nodeDesignCode || n.designCode || n.nodeDesignId || '',
+    n.geometryVersion,
+    n.title || n.designName || '',
+    n.geometrySource ?? '',
+    n.coordinateSystem ?? '',
+    n.unitSystem ?? '',
+    n.intendedMaterialType ?? '',
+    n.notes ?? '',
+    n.createdAt,
+  ]);
+  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
+}
+
+export function exportSpecimensToCsv(
+  specimens: Array<import('../domain/models').Specimen>
+): string {
+  const headers = [
+    'id',
+    'specimenCode',
+    'experimentId',
+    'nodeDesignId',
+    'geometryVersion',
+    'materialBatchIdentifier',
+    'currentPhysicalStage',
+    'specimenStatus',
+    'fabricationTimestamp',
+    'notes',
+  ];
+  const escapeCsv = (val: unknown) => {
+    const str = val === null || val === undefined ? '' : String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+  const rows = specimens.map((s) => [
+    s.id,
+    s.specimenCode,
+    s.experimentId,
+    s.nodeDesignId ?? '',
+    s.geometryVersion ?? '',
+    s.materialBatchIdentifier ?? '',
+    s.currentPhysicalStage,
+    s.acceptanceStatus || s.specimenStatus || s.status || '',
+    s.fabricationTimestamp,
+    s.notes || s.observations || '',
+  ]);
+  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
+}
+
+export function exportAssemblyVerificationsToCsv(
+  verifications: Array<import('../domain/models').AssemblyVerification>
+): string {
+  const headers = [
+    'id',
+    'experimentId',
+    'specimenId',
+    'nodeDesignId',
+    'geometryVersion',
+    'physicalStageAtTest',
+    'connectedMatingComponentId',
+    'internalFeatureDiameterMm',
+    'matingExternalDiameterMm',
+    'measuredClearanceMm',
+    'insertionDepthMm',
+    'passFailStatus',
+    'operatorNotes',
+    'createdAt',
+  ];
+  const escapeCsv = (val: unknown) => {
+    const str = val === null || val === undefined ? '' : String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+  const rows = verifications.map((v) => [
+    v.id,
+    v.experimentId,
+    v.specimenId,
+    v.nodeDesignId,
+    v.geometryVersion,
+    v.physicalStageAtTest,
+    v.connectedMatingComponentId || v.matingMemberType || '',
+    v.internalFeatureDiameterMm ?? v.measuredSocketDiameterMm ?? '',
+    v.matingExternalDiameterMm ?? v.matingMemberActualDiameterMm ?? '',
+    v.measuredClearanceMm ?? '',
+    v.insertionDepthMm ?? v.achievedInsertionDepthMm ?? '',
+    v.passFailStatus || v.verificationResult || '',
+    v.operatorNotes || v.notes || '',
+    v.createdAt,
+  ]);
+  return [headers.join(','), ...rows.map((r) => r.map(escapeCsv).join(','))].join('\n');
 }

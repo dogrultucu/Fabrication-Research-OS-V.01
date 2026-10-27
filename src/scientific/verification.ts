@@ -1,6 +1,19 @@
-import { DOMAIN_ENTITY_NAMES } from '../domain/models';
+import {
+  DOMAIN_ENTITY_NAMES,
+  DOMAIN_ENTITY_SCHEMA_MAP,
+  NodeDesignSchema,
+  NodeFeatureDefinitionSchema,
+  SpecimenSchema,
+  AssemblyVerificationSchema,
+  ExperimentSchema,
+  MeasurementSchema,
+  CalibrationSessionSchema,
+  CalibrationTrialSchema,
+  SCHEMA_VERSION,
+} from '../domain/models';
 import { createDefaultProject, createSampleDataset } from '../fixtures/sampleDataset';
 import { PHASE_A_INTEGRATION_ADAPTERS } from '../integrations/adapters';
+import { CANONICAL_ENTITY_TO_STORE, STORES } from '../repositories/repository';
 import {
   exportMeasurementsToCsv,
   parseMeasurementsCsv,
@@ -8,16 +21,20 @@ import {
 } from '../services/importExport';
 import {
   compareExperimentToBaseline,
+  computeDiametralClearance,
   computeMeasurementStatistics,
+  computeStageToStageShrinkage,
   evaluateEmpiricalCheckpointCandidate,
   evaluateExperimentQuality,
+  evaluateFeatureMeasurementTolerance,
   evaluateParameterBoundsDeterministically,
+  evaluateSpecimenAcceptance,
   verifyStreamCorrelationCompatibility,
 } from './calculations';
 
 /**
- * Automated domain & scientific invariant verification suite for Phase A.
- * Covers all 12 Phase A Acceptance Audit workflows and edge cases.
+ * Automated domain & scientific invariant verification suite for Phase A & v0.1.1 Schema v2.
+ * Covers all 17 canonical domain entities, Zod schema compliance, and scientific invariants.
  */
 export function runPhaseAVerificationChecks(): {
   passed: boolean;
@@ -25,33 +42,58 @@ export function runPhaseAVerificationChecks(): {
 } {
   const results: Array<{ check: string; passed: boolean; detail: string }> = [];
 
-  // 1. Canonical 13 entities count
+  // 1. Canonical 17 entities count, Schema v2, and IndexedDB store coverage
+  const allEntitiesHaveSchemas = DOMAIN_ENTITY_NAMES.every(
+    (name) => Boolean(DOMAIN_ENTITY_SCHEMA_MAP[name])
+  );
+  const allEntitiesHaveStores = DOMAIN_ENTITY_NAMES.every(
+    (name) => Boolean(CANONICAL_ENTITY_TO_STORE[name] && STORES[CANONICAL_ENTITY_TO_STORE[name]])
+  );
   results.push({
-    check: '1. Canonical 13 Domain Entities',
-    passed: DOMAIN_ENTITY_NAMES.length === 13,
-    detail: `Registered ${DOMAIN_ENTITY_NAMES.length} entities: ${DOMAIN_ENTITY_NAMES.join(', ')}`,
+    check: '1. Canonical 17 Domain Entities & Schema v2 Store Mapping',
+    passed:
+      DOMAIN_ENTITY_NAMES.length === 17 &&
+      SCHEMA_VERSION === 2 &&
+      allEntitiesHaveSchemas &&
+      allEntitiesHaveStores &&
+      Object.keys(STORES).length === 17,
+    detail: `SCHEMA_VERSION=${SCHEMA_VERSION}; Registered ${DOMAIN_ENTITY_NAMES.length} entities with 17 Zod schemas and 17 IndexedDB stores: ${DOMAIN_ENTITY_NAMES.join(', ')}`,
   });
 
   const proj = createDefaultProject();
   const sample = createSampleDataset(proj.id);
 
-  // 2. Non-destructive sample fixture tagging
+  // 2. Non-destructive sample fixture tagging & full Zod Schema v2 compliance
   const allSampleFlagged =
     sample.experiments.every((e) => e.isSampleFixture === true) &&
     sample.materialProfiles.every((m) => m.isSampleFixture === true) &&
     sample.hardwareProfiles.every((h) => h.isSampleFixture === true) &&
+    sample.nodeDesigns.every((nd) => nd.isSampleFixture === true) &&
+    sample.nodeFeatureDefinitions.every((f) => f.isSampleFixture === true) &&
+    sample.specimens.every((s) => s.isSampleFixture === true) &&
     sample.measurements.every((m) => m.isSampleFixture === true) &&
+    sample.assemblyVerifications.every((a) => a.isSampleFixture === true) &&
     sample.calibrationSessions.every((s) => s.isSampleFixture === true) &&
     sample.calibrationTrials.every((t) => t.isSampleFixture === true) &&
     sample.processObservations.every((o) => o.isSampleFixture === true) &&
     sample.researchReferences.every((r) => r.isSampleFixture === true) &&
     sample.productionMetrics.every((p) => p.isSampleFixture === true);
 
+  const allSampleZodValid =
+    sample.nodeDesigns.every((nd) => NodeDesignSchema.safeParse(nd).success) &&
+    sample.nodeFeatureDefinitions.every((f) => NodeFeatureDefinitionSchema.safeParse(f).success) &&
+    sample.specimens.every((s) => SpecimenSchema.safeParse(s).success) &&
+    sample.measurements.every((m) => MeasurementSchema.safeParse(m).success) &&
+    sample.assemblyVerifications.every((a) => AssemblyVerificationSchema.safeParse(a).success) &&
+    sample.experiments.every((e) => ExperimentSchema.safeParse(e).success) &&
+    sample.calibrationSessions.every((s) => CalibrationSessionSchema.safeParse(s).success) &&
+    sample.calibrationTrials.every((t) => CalibrationTrialSchema.safeParse(t).success);
+
   results.push({
-    check: '2. Sample Fixtures Non-Destructive Tagging',
-    passed: allSampleFlagged,
+    check: '2. Sample Fixtures Non-Destructive Tagging & Strict Zod Schema v2 Validation',
+    passed: allSampleFlagged && allSampleZodValid,
     detail:
-      'All sample records across all stores carry isSampleFixture=true so user research data is never deleted on sample removal.',
+      'All sample records across all 17 stores carry isSampleFixture=true and pass strict Zod Schema v2 validation.',
   });
 
   // 3. Numerical measurement accuracy, RMSE, sample stdDev (n-1), and tolerance pass rate
@@ -135,8 +177,11 @@ export function runPhaseAVerificationChecks(): {
   const statsExcluded = computeMeasurementStatistics([...exp1Meas, ...unverifiedRecords], {
     includeUnverifiedAi: false,
   });
+  const exp1OnlyMeasurements = sample.measurements.filter(
+    (m) => m.experimentId === 'sample-exp-001'
+  );
   const qualEvalExcluded = evaluateExperimentQuality(exp1, [
-    ...sample.measurements,
+    ...exp1OnlyMeasurements,
     ...unverifiedRecords,
   ]);
   results.push({
@@ -247,10 +292,10 @@ export function runPhaseAVerificationChecks(): {
     detail: `Exported & re-parsed ${csvRoundTrip.validMeasurements.length} rows with 0 errors; units, coords, confidence, and notes preserved.`,
   });
 
-  // 10. Workspace JSON Backup & Relational Integrity Validation
+  // 10. Workspace JSON Backup & Relational Integrity Validation (Schema v2 + v1 Migration)
   const validSnapshot = {
-    schemaVersion: 1,
-    appVersion: '0.1.0',
+    schemaVersion: SCHEMA_VERSION,
+    appVersion: '0.1.1',
     exportedAt: new Date().toISOString(),
     project: proj,
     ...sample,
@@ -298,9 +343,71 @@ export function runPhaseAVerificationChecks(): {
       'RAPID snippet includes simulation warning header, clamps speed <= 250 mm/s, and separates PERS declarations from PROC instructions.',
   });
 
+  // 12. Ceramic Node Multi-Stage Shrinkage, Tolerance & Assembly Acceptance Guard (v0.1.1)
+  const s01 = sample.specimens.find((s) => s.id === 'sample-spec-004-s01')!;
+  const s02 = sample.specimens.find((s) => s.id === 'sample-spec-004-s02')!;
+  const s03 = sample.specimens.find((s) => s.id === 'sample-spec-004-s03')!;
+  const s03Green = sample.measurements.find((m) => m.id === 'sample-meas-node-020')!;
+  const s03Dry = sample.measurements.find((m) => m.id === 'sample-meas-node-021')!;
+  const s03Fired = sample.measurements.find((m) => m.id === 'sample-meas-node-022')!;
+
+  const shrinkGreenToDry = computeStageToStageShrinkage(s03Green, s03Dry);
+  const shrinkDryToFired = computeStageToStageShrinkage(s03Dry, s03Fired);
+  const shrinkGreenToFired = computeStageToStageShrinkage(s03Green, s03Fired);
+  const shrinkReversed = computeStageToStageShrinkage(s03Dry, s03Green);
+
+  const accS01 = evaluateSpecimenAcceptance(
+    s01,
+    sample.measurements,
+    sample.assemblyVerifications,
+    sample.nodeFeatureDefinitions
+  );
+  const accS02 = evaluateSpecimenAcceptance(
+    s02,
+    sample.measurements,
+    sample.assemblyVerifications,
+    sample.nodeFeatureDefinitions
+  );
+  const accS03 = evaluateSpecimenAcceptance(
+    s03,
+    sample.measurements,
+    sample.assemblyVerifications,
+    sample.nodeFeatureDefinitions
+  );
+  const clearance = computeDiametralClearance(18.8, 18.2);
+  const nanTol = evaluateFeatureMeasurementTolerance({
+    measuredValue: NaN,
+    targetValue: 20.0,
+    tolerance: 0.5,
+    unit: 'mm',
+    physicalStage: 'GREEN',
+    targetStage: 'GREEN',
+  });
+
+  results.push({
+    check: '12. Ceramic Node Shrinkage, Tolerance & Assembly Acceptance Guards (v0.1.1)',
+    passed:
+      shrinkGreenToDry.canCompute &&
+      Math.abs((shrinkGreenToDry.linearShrinkagePercent ?? 0) - 6.0) < 0.001 &&
+      shrinkDryToFired.canCompute &&
+      Math.abs((shrinkDryToFired.linearShrinkagePercent ?? 0) - 6.383) < 0.002 &&
+      shrinkGreenToFired.canCompute &&
+      Math.abs((shrinkGreenToFired.linearShrinkagePercent ?? 0) - 12.0) < 0.001 &&
+      !shrinkReversed.canCompute &&
+      accS01.status === 'Assembly Accepted' &&
+      accS02.status === 'Geometrically Rejected' &&
+      accS03.status === 'Geometrically Accepted' &&
+      clearance !== null &&
+      Math.abs(clearance.clearanceMm - 0.6) < 0.001 &&
+      nanTol.withinTolerance === null &&
+      nanTol.status === 'INVALID_INPUT_WITHHELD',
+    detail: `GREEN->DRY=${shrinkGreenToDry.linearShrinkagePercent}%, DRY->FIRED=${shrinkDryToFired.linearShrinkagePercent}%, GREEN->FIRED=${shrinkGreenToFired.linearShrinkagePercent}%; S01=${accS01.status}, S02=${accS02.status}, S03=${accS03.status} (NOT_TESTED assembly withheld from Assembly Accepted).`,
+  });
+
   return {
     passed: results.every((r) => r.passed),
     results,
   };
 }
+
 

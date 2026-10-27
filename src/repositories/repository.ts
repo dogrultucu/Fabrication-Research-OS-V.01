@@ -9,6 +9,7 @@ import {
   CalibrationSessionSchema,
   CalibrationTrial,
   CalibrationTrialSchema,
+  DomainEntityName,
   Experiment,
   ExperimentSchema,
   FileDatasetMetadata,
@@ -39,10 +40,10 @@ import {
 } from '../domain/models';
 import { createDefaultProject, createSampleDataset } from '../fixtures/sampleDataset';
 
-const DB_NAME = 'FabricationResearchOS_IDB';
-const DB_VERSION = 2;
+export const DB_NAME = 'FabricationResearchOS_IDB';
+export const DB_VERSION = 2;
 
-const STORES = {
+export const STORES = {
   projects: 'projects',
   materialProfiles: 'materialProfiles',
   hardwareProfiles: 'hardwareProfiles',
@@ -62,6 +63,26 @@ const STORES = {
   auditEvents: 'auditEvents',
 } as const;
 
+export const CANONICAL_ENTITY_TO_STORE: Record<DomainEntityName, keyof typeof STORES> = {
+  Project: 'projects',
+  MaterialProfile: 'materialProfiles',
+  HardwareProfile: 'hardwareProfiles',
+  NodeDesign: 'nodeDesigns',
+  NodeFeatureDefinition: 'nodeFeatureDefinitions',
+  Experiment: 'experiments',
+  Specimen: 'specimens',
+  ProcessParameterSet: 'processParameterSets',
+  Measurement: 'measurements',
+  AssemblyVerification: 'assemblyVerifications',
+  ProcessObservation: 'processObservations',
+  CalibrationSession: 'calibrationSessions',
+  CalibrationTrial: 'calibrationTrials',
+  ResearchReference: 'researchReferences',
+  ProductionMetricRecord: 'productionMetrics',
+  FileDatasetMetadata: 'fileMetadata',
+  AuditEvent: 'auditEvents',
+};
+
 export interface StorageHealthInfo {
   adapterName: 'IndexedDB Local Repository (v2)';
   schemaVersion: number;
@@ -79,9 +100,9 @@ export interface StorageHealthInfo {
 export interface ResearchRepository {
   loadWorkspace(): Promise<ResearchWorkspaceSnapshot>;
   saveProject(project: Project, actor?: string): Promise<void>;
-  saveMaterialProfile(profile: MaterialProfile, isNew: boolean, actor?: string): Promise<void>;
+  saveMaterialProfile(profile: MaterialProfile, isNew: boolean, actor?: string): Promise<{ ok: boolean; error?: string }>;
   deleteMaterialProfile(id: string, actor?: string): Promise<{ ok: boolean; error?: string }>;
-  saveHardwareProfile(profile: HardwareProfile, isNew: boolean, actor?: string): Promise<void>;
+  saveHardwareProfile(profile: HardwareProfile, isNew: boolean, actor?: string): Promise<{ ok: boolean; error?: string }>;
   deleteHardwareProfile(id: string, actor?: string): Promise<{ ok: boolean; error?: string }>;
   saveNodeDesign(
     nodeDesign: NodeDesign,
@@ -114,12 +135,12 @@ export interface ResearchRepository {
     actor?: string
   ): Promise<{ ok: boolean; error?: string }>;
   deleteSpecimen(id: string, actor?: string): Promise<{ ok: boolean; error?: string }>;
-  saveMeasurement(measurement: Measurement, isNew: boolean, actor?: string): Promise<void>;
+  saveMeasurement(measurement: Measurement, isNew: boolean, actor?: string): Promise<{ ok: boolean; error?: string }>;
   saveMeasurementsBatch(
     measurements: Measurement[],
     fileMeta?: FileDatasetMetadata,
     actor?: string
-  ): Promise<void>;
+  ): Promise<{ ok: boolean; error?: string }>;
   deleteMeasurement(id: string, actor?: string): Promise<void>;
   saveAssemblyVerification(
     verification: AssemblyVerification,
@@ -129,8 +150,8 @@ export interface ResearchRepository {
   deleteAssemblyVerification(id: string, actor?: string): Promise<void>;
   saveProcessObservation(obs: ProcessObservation, actor?: string): Promise<void>;
   deleteProcessObservation(id: string, actor?: string): Promise<void>;
-  saveCalibrationSession(session: CalibrationSession, isNew: boolean, actor?: string): Promise<void>;
-  saveCalibrationTrial(trial: CalibrationTrial, actor?: string): Promise<void>;
+  saveCalibrationSession(session: CalibrationSession, isNew: boolean, actor?: string): Promise<{ ok: boolean; error?: string }>;
+  saveCalibrationTrial(trial: CalibrationTrial, actor?: string): Promise<{ ok: boolean; error?: string }>;
   saveResearchReference(ref: ResearchReference, isNew: boolean, actor?: string): Promise<void>;
   deleteResearchReference(id: string, actor?: string): Promise<void>;
   saveProductionMetric(record: ProductionMetricRecord, isNew: boolean, actor?: string): Promise<void>;
@@ -291,21 +312,98 @@ export class IndexedDBResearchRepository implements ResearchRepository {
     // Normalize legacy records non-destructively in memory (and guarantee legacy measurements without stage get 'Stage Unknown')
     const materialProfiles = rawMaterialProfiles.map((m) => MaterialProfileSchema.parse(m));
     const hardwareProfiles = rawHardwareProfiles.map((h) => HardwareProfileSchema.parse(h));
-    const nodeDesigns = rawNodeDesigns.map((n) => NodeDesignSchema.parse(n));
-    const nodeFeatureDefinitions = rawNodeFeatureDefinitions.map((f) =>
-      NodeFeatureDefinitionSchema.parse(f)
+    const nodeDesigns = rawNodeDesigns.map((n: any) =>
+      NodeDesignSchema.parse({
+        ...n,
+        nodeDesignCode: n.nodeDesignCode || n.designCode || n.nodeDesignId || 'UNSPECIFIED-NODE',
+        title: n.title || n.designName || 'Untitled Node Design',
+        coordinateSystem: n.coordinateSystem || 'wobjPrintTable_01',
+        unitSystem: n.unitSystem || 'mm / deg',
+      })
     );
-    const experiments = rawExperiments.map((e) => ExperimentSchema.parse(e));
-    const specimens = rawSpecimens.map((s) => SpecimenSchema.parse(s));
+    const nodeFeatureDefinitions = rawNodeFeatureDefinitions.map((f: any) =>
+      NodeFeatureDefinitionSchema.parse({
+        ...f,
+        featureCode: f.featureCode || f.featureId || 'UNSPECIFIED-FEAT',
+        coordinateFrame: f.coordinateFrame || 'wobjPrintTable_01',
+        assemblyCritical: f.assemblyCritical ?? f.criticalForAssembly ?? true,
+        measurementMethod: f.measurementMethod || 'Digital caliper',
+      })
+    );
+    const experiments = rawExperiments.map((e: any) =>
+      ExperimentSchema.parse({
+        ...e,
+        researchWorkflowType: e.researchWorkflowType || 'General Extrusion Research',
+      })
+    );
+    const specimens = rawSpecimens.map((s: any) => {
+      const legacyAcceptance = s.acceptanceStatus || s.specimenStatus || 'Not Tested';
+      const inferredLifecycle =
+        s.status ||
+        (legacyAcceptance === 'Assembly Accepted'
+          ? 'Assembled'
+          : legacyAcceptance === 'Geometrically Rejected' || legacyAcceptance === 'Assembly Rejected'
+          ? 'Rejected'
+          : s.currentPhysicalStage === 'FIRED'
+          ? 'Fired'
+          : s.currentPhysicalStage === 'DRY'
+          ? 'Dried'
+          : 'Inspected');
+      return SpecimenSchema.parse({
+        ...s,
+        status: inferredLifecycle,
+        acceptanceStatus: legacyAcceptance,
+        specimenStatus: s.specimenStatus || legacyAcceptance,
+        materialProfileId: s.materialProfileId || 'unknown-material',
+        materialBatchIdentifier: s.materialBatchIdentifier || 'UNKNOWN-BATCH',
+        hardwareProfileId: s.hardwareProfileId || 'unknown-hardware',
+        fabricationRunIdentifier: s.fabricationRunIdentifier || 'UNKNOWN-RUN',
+        fabricationTimestamp: s.fabricationTimestamp || s.createdAt || new Date().toISOString(),
+        processParameterSetId: s.processParameterSetId || 'unknown-pps',
+        requiresAssemblyVerification: s.requiresAssemblyVerification ?? false,
+      });
+    });
     const measurements = rawMeasurements.map((m) =>
       MeasurementSchema.parse({
         ...m,
         physicalStage: m.physicalStage || 'Stage Unknown',
       })
     );
-    const assemblyVerifications = rawAssemblyVerifications.map((a) =>
-      AssemblyVerificationSchema.parse(a)
-    );
+    const assemblyVerifications = rawAssemblyVerifications.map((a: any) => {
+      const fitFromLegacy =
+        a.fitClassification ||
+        (a.physicalFitResult === 'Pass'
+          ? 'Clearance Fit'
+          : a.physicalFitResult === 'Fail'
+          ? 'Interference / No-Go'
+          : 'Not Tested');
+      const passFailFromLegacy =
+        a.passFailStatus ||
+        (a.physicalFitResult === 'Pass'
+          ? 'PASS'
+          : a.physicalFitResult === 'Fail'
+          ? 'FAIL'
+          : a.physicalFitResult === 'Conditional'
+          ? 'CONDITIONAL'
+          : 'NOT_TESTED');
+      const verResFromLegacy =
+        a.verificationResult ||
+        (passFailFromLegacy === 'PASS'
+          ? 'PASS'
+          : passFailFromLegacy === 'FAIL'
+          ? 'FAIL'
+          : passFailFromLegacy === 'CONDITIONAL'
+          ? 'CONDITIONAL_PASS'
+          : 'NOT_TESTED');
+      return AssemblyVerificationSchema.parse({
+        ...a,
+        specimenRecordId: a.specimenRecordId || a.specimenId,
+        fitClassification: fitFromLegacy,
+        passFailStatus: passFailFromLegacy,
+        verificationResult: verResFromLegacy,
+        reworkRequired: a.reworkRequired ?? false,
+      });
+    });
     const processObservations = rawProcessObservations.map((o) =>
       ProcessObservationSchema.parse(o)
     );
@@ -379,11 +477,15 @@ export class IndexedDBResearchRepository implements ResearchRepository {
     profile: MaterialProfile,
     isNew: boolean,
     actor = 'Researcher'
-  ): Promise<void> {
+  ): Promise<{ ok: boolean; error?: string }> {
     const candidate: MaterialProfile = isNew
       ? profile
       : { ...profile, isSampleFixture: false };
-    const recordToSave = MaterialProfileSchema.parse(candidate);
+    const parsed = MaterialProfileSchema.safeParse(candidate);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+    }
+    const recordToSave = parsed.data;
     const db = await openDatabase();
     await putInStore(db, STORES.materialProfiles, recordToSave);
     await this.logAudit(
@@ -395,6 +497,7 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       actor
     );
     db.close();
+    return { ok: true };
   }
 
   async deleteMaterialProfile(
@@ -432,11 +535,15 @@ export class IndexedDBResearchRepository implements ResearchRepository {
     profile: HardwareProfile,
     isNew: boolean,
     actor = 'Researcher'
-  ): Promise<void> {
+  ): Promise<{ ok: boolean; error?: string }> {
     const candidate: HardwareProfile = isNew
       ? profile
       : { ...profile, isSampleFixture: false };
-    const recordToSave = HardwareProfileSchema.parse(candidate);
+    const parsed = HardwareProfileSchema.safeParse(candidate);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+    }
+    const recordToSave = parsed.data;
     const db = await openDatabase();
     await putInStore(db, STORES.hardwareProfiles, recordToSave);
     await this.logAudit(
@@ -448,6 +555,7 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       actor
     );
     db.close();
+    return { ok: true };
   }
 
   async deleteHardwareProfile(
@@ -882,9 +990,18 @@ export class IndexedDBResearchRepository implements ResearchRepository {
     }
 
     // Scientific guard: Specimen cannot be marked 'Assembly Accepted' without a PASS physical AssemblyVerification record
-    if (parsed.data.acceptanceStatus === 'Assembly Accepted') {
+    if (
+      parsed.data.acceptanceStatus === 'Assembly Accepted' ||
+      parsed.data.specimenStatus === 'Assembly Accepted'
+    ) {
       const hasPassingAssemblyTest = verifications.some(
-        (v) => v.specimenId === parsed.data.id && v.passFailStatus === 'PASS'
+        (v) =>
+          (v.specimenRecordId === parsed.data.id ||
+            v.specimenId === parsed.data.id ||
+            v.specimenId === parsed.data.specimenCode) &&
+          v.passFailStatus !== 'NOT_TESTED' &&
+          v.verificationResult !== 'NOT_TESTED' &&
+          (v.passFailStatus === 'PASS' || v.verificationResult === 'PASS')
       );
       if (!hasPassingAssemblyTest) {
         db.close();
@@ -967,7 +1084,9 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       getAllFromStore<AssemblyVerification>(db, STORES.assemblyVerifications),
     ]);
     const depMeas = measurements.filter((m) => m.specimenRecordId === id);
-    const depVer = verifications.filter((v) => v.specimenId === id);
+    const depVer = verifications.filter(
+      (v) => v.specimenRecordId === id || v.specimenId === id
+    );
     if (depMeas.length > 0 || depVer.length > 0) {
       db.close();
       return {
@@ -992,7 +1111,7 @@ export class IndexedDBResearchRepository implements ResearchRepository {
     measurement: Measurement,
     isNew: boolean,
     actor = 'Researcher'
-  ): Promise<void> {
+  ): Promise<{ ok: boolean; error?: string }> {
     const enforcedCandidate: Measurement = {
       ...measurement,
       physicalStage: measurement.physicalStage || 'Stage Unknown',
@@ -1003,7 +1122,11 @@ export class IndexedDBResearchRepository implements ResearchRepository {
           : measurement.verifiedPhysicalMeasurement,
       isSampleFixture: isNew ? measurement.isSampleFixture : false,
     };
-    const enforced = MeasurementSchema.parse(enforcedCandidate);
+    const parsed = MeasurementSchema.safeParse(enforcedCandidate);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+    }
+    const enforced = parsed.data;
     const db = await openDatabase();
     await putInStore(db, STORES.measurements, enforced);
     await this.logAudit(
@@ -1015,13 +1138,14 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       actor
     );
     db.close();
+    return { ok: true };
   }
 
   async saveMeasurementsBatch(
     measurements: Measurement[],
     fileMeta?: FileDatasetMetadata,
     actor = 'Researcher'
-  ): Promise<void> {
+  ): Promise<{ ok: boolean; error?: string }> {
     const db = await openDatabase();
     for (const m of measurements) {
       const enforcedCandidate: Measurement = {
@@ -1032,8 +1156,12 @@ export class IndexedDBResearchRepository implements ResearchRepository {
             ? false
             : m.verifiedPhysicalMeasurement,
       };
-      const enforced = MeasurementSchema.parse(enforcedCandidate);
-      await putInStore(db, STORES.measurements, enforced);
+      const parsed = MeasurementSchema.safeParse(enforcedCandidate);
+      if (!parsed.success) {
+        db.close();
+        return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+      }
+      await putInStore(db, STORES.measurements, parsed.data);
     }
     if (fileMeta) {
       const validMeta = FileDatasetMetadataSchema.parse(fileMeta);
@@ -1048,6 +1176,7 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       actor
     );
     db.close();
+    return { ok: true };
   }
 
   async deleteMeasurement(id: string, actor = 'Researcher'): Promise<void> {
@@ -1085,7 +1214,12 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       getAllFromStore<Specimen>(db, STORES.specimens),
       getAllFromStore<Experiment>(db, STORES.experiments),
     ]);
-    const spec = specimens.find((s) => s.id === parsed.data.specimenId);
+    const spec = specimens.find(
+      (s) =>
+        s.id === parsed.data.specimenRecordId ||
+        s.id === parsed.data.specimenId ||
+        s.specimenCode === parsed.data.specimenId
+    );
     if (!spec) {
       db.close();
       return {
@@ -1104,18 +1238,26 @@ export class IndexedDBResearchRepository implements ResearchRepository {
     await putInStore(db, STORES.assemblyVerifications, parsed.data);
 
     // Synchronize specimen status if physical assembly test passed or failed
-    if (parsed.data.passFailStatus === 'PASS') {
+    if (
+      parsed.data.passFailStatus === 'PASS' ||
+      parsed.data.verificationResult === 'PASS'
+    ) {
       await putInStore(db, STORES.specimens, {
         ...spec,
-        currentStatus: 'Assembly Tested',
+        status: 'Assembled',
         acceptanceStatus: 'Assembly Accepted',
+        specimenStatus: 'Assembly Accepted',
         isSampleFixture: false,
       });
-    } else if (parsed.data.passFailStatus === 'FAIL') {
+    } else if (
+      parsed.data.passFailStatus === 'FAIL' ||
+      parsed.data.verificationResult === 'FAIL'
+    ) {
       await putInStore(db, STORES.specimens, {
         ...spec,
-        currentStatus: 'Assembly Tested',
+        status: 'Rejected',
         acceptanceStatus: 'Assembly Rejected',
+        specimenStatus: 'Assembly Rejected',
         isSampleFixture: false,
       });
     }
@@ -1125,7 +1267,7 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       'AssemblyVerification',
       parsed.data.id,
       isNew ? 'CREATE' : 'UPDATE',
-      `Recorded physical assembly verification for specimen ${spec.specimenCode}: ${parsed.data.insertionResult} (${parsed.data.passFailStatus})`,
+      `Recorded physical assembly verification for specimen ${spec.specimenCode}: ${parsed.data.fitClassification} (${parsed.data.passFailStatus})`,
       actor
     );
     db.close();
@@ -1190,11 +1332,15 @@ export class IndexedDBResearchRepository implements ResearchRepository {
     session: CalibrationSession,
     isNew: boolean,
     actor = 'Researcher'
-  ): Promise<void> {
+  ): Promise<{ ok: boolean; error?: string }> {
     const candidate: CalibrationSession = isNew
       ? session
       : { ...session, isSampleFixture: false };
-    const validated = CalibrationSessionSchema.parse(candidate);
+    const parsed = CalibrationSessionSchema.safeParse(candidate);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+    }
+    const validated = parsed.data;
     const db = await openDatabase();
     await putInStore(db, STORES.calibrationSessions, validated);
     await this.logAudit(
@@ -1206,13 +1352,18 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       actor
     );
     db.close();
+    return { ok: true };
   }
 
   async saveCalibrationTrial(
     trial: CalibrationTrial,
     actor = 'Researcher'
-  ): Promise<void> {
-    const validated = CalibrationTrialSchema.parse(trial);
+  ): Promise<{ ok: boolean; error?: string }> {
+    const parsed = CalibrationTrialSchema.safeParse(trial);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues.map((i) => i.message).join("; ") };
+    }
+    const validated = parsed.data;
     const db = await openDatabase();
     await putInStore(db, STORES.calibrationTrials, validated);
     await this.logAudit(
@@ -1224,6 +1375,7 @@ export class IndexedDBResearchRepository implements ResearchRepository {
       actor
     );
     db.close();
+    return { ok: true };
   }
 
   async saveResearchReference(
@@ -1495,8 +1647,8 @@ export class IndexedDBResearchRepository implements ResearchRepository {
     for (const spec of specimens) {
       if (requiredSpecIds.has(spec.id)) {
         requiredExpIds.add(spec.experimentId);
-        requiredHwIds.add(spec.hardwareProfileId);
-        requiredPpsIds.add(spec.processParameterSetId);
+        if (spec.hardwareProfileId) requiredHwIds.add(spec.hardwareProfileId);
+        if (spec.processParameterSetId) requiredPpsIds.add(spec.processParameterSetId);
         if (spec.nodeDesignId) requiredNodeDesignIds.add(spec.nodeDesignId);
       }
     }

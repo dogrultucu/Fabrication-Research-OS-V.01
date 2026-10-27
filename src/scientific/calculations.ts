@@ -30,38 +30,131 @@ export interface ToleranceEvaluationResult {
     | 'FAIL_LOW'
     | 'FAIL_HIGH'
     | 'STAGE_MISMATCH_WITHHELD'
-    | 'STAGE_UNKNOWN_WITHHELD';
+    | 'STAGE_UNKNOWN_WITHHELD'
+    | 'INVALID_INPUT_WITHHELD'
+    | 'UNIT_MISMATCH_WITHHELD';
   explanation: string;
 }
 
 /**
  * Evaluates a single physical or feature measurement against symmetric (±tolerance)
- * or asymmetric ([toleranceLower, toleranceUpper]) bounds, enforcing physical stage compatibility.
+ * or asymmetric ([lowerTolerance/toleranceLower, upperTolerance/toleranceUpper]) bounds,
+ * enforcing physical stage compatibility, finite numeric inputs, and unit consistency.
  */
-export function evaluateFeatureMeasurementTolerance(
-  m: Pick<
-    Measurement,
-    | 'measuredValue'
-    | 'targetValue'
-    | 'tolerance'
-    | 'toleranceLower'
-    | 'toleranceUpper'
-    | 'unit'
-    | 'physicalStage'
-    | 'targetStage'
-  >
-): ToleranceEvaluationResult {
+export function evaluateFeatureMeasurementTolerance(m: {
+  measuredValue: number;
+  targetValue: number;
+  tolerance: number;
+  unit: string;
+  toleranceLower?: number;
+  toleranceUpper?: number;
+  lowerTolerance?: number;
+  upperTolerance?: number;
+  physicalStage?: PhysicalStage;
+  targetStage?: PhysicalStage;
+  expectedUnit?: string;
+}): ToleranceEvaluationResult {
+  if (!Number.isFinite(m.measuredValue) || !Number.isFinite(m.targetValue)) {
+    return {
+      residual: NaN,
+      absResidual: NaN,
+      lowerBoundValue: NaN,
+      upperBoundValue: NaN,
+      lowerDelta: NaN,
+      upperDelta: NaN,
+      isAsymmetric: false,
+      stageCompatible: false,
+      withinTolerance: null,
+      status: 'INVALID_INPUT_WITHHELD',
+      explanation:
+        'Withheld: Measured value and target value must be finite numbers.',
+    };
+  }
+
+  if (
+    m.expectedUnit &&
+    m.unit &&
+    m.expectedUnit.trim().toLowerCase() !== m.unit.trim().toLowerCase()
+  ) {
+    return {
+      residual: m.measuredValue - m.targetValue,
+      absResidual: Math.abs(m.measuredValue - m.targetValue),
+      lowerBoundValue: NaN,
+      upperBoundValue: NaN,
+      lowerDelta: NaN,
+      upperDelta: NaN,
+      isAsymmetric: false,
+      stageCompatible: false,
+      withinTolerance: null,
+      status: 'UNIT_MISMATCH_WITHHELD',
+      explanation: `Withheld: Measurement unit '${m.unit}' does not match expected feature unit '${m.expectedUnit}'.`,
+    };
+  }
+
+  const rawLower =
+    typeof m.lowerTolerance === 'number' && Number.isFinite(m.lowerTolerance)
+      ? m.lowerTolerance
+      : typeof m.toleranceLower === 'number' && Number.isFinite(m.toleranceLower)
+      ? m.toleranceLower
+      : null;
+
+  const rawUpper =
+    typeof m.upperTolerance === 'number' && Number.isFinite(m.upperTolerance)
+      ? m.upperTolerance
+      : typeof m.toleranceUpper === 'number' && Number.isFinite(m.toleranceUpper)
+      ? m.toleranceUpper
+      : null;
+
+  const hasSymmetricTol =
+    typeof m.tolerance === 'number' && Number.isFinite(m.tolerance) && m.tolerance > 0;
+
+  if (rawLower === null && rawUpper === null && !hasSymmetricTol) {
+    return {
+      residual: m.measuredValue - m.targetValue,
+      absResidual: Math.abs(m.measuredValue - m.targetValue),
+      lowerBoundValue: NaN,
+      upperBoundValue: NaN,
+      lowerDelta: NaN,
+      upperDelta: NaN,
+      isAsymmetric: false,
+      stageCompatible: false,
+      withinTolerance: null,
+      status: 'INVALID_INPUT_WITHHELD',
+      explanation:
+        'Withheld: Tolerance bounds must be positive finite numbers.',
+    };
+  }
+
   const lowerDelta =
-    typeof m.toleranceLower === 'number' && Number.isFinite(m.toleranceLower)
-      ? m.toleranceLower <= 0
-        ? m.toleranceLower
-        : -Math.abs(m.toleranceLower)
+    rawLower !== null
+      ? rawLower <= 0
+        ? rawLower
+        : -Math.abs(rawLower)
       : -Math.abs(m.tolerance);
 
   const upperDelta =
-    typeof m.toleranceUpper === 'number' && Number.isFinite(m.toleranceUpper)
-      ? Math.abs(m.toleranceUpper)
-      : Math.abs(m.tolerance);
+    rawUpper !== null ? Math.abs(rawUpper) : Math.abs(m.tolerance);
+
+  if (
+    !Number.isFinite(lowerDelta) ||
+    !Number.isFinite(upperDelta) ||
+    upperDelta - lowerDelta <= 0
+  ) {
+    return {
+      residual: m.measuredValue - m.targetValue,
+      absResidual: Math.abs(m.measuredValue - m.targetValue),
+      lowerBoundValue: NaN,
+      upperBoundValue: NaN,
+      lowerDelta: NaN,
+      upperDelta: NaN,
+      isAsymmetric: false,
+      stageCompatible: false,
+      withinTolerance: null,
+      status: 'INVALID_INPUT_WITHHELD',
+      explanation:
+        'Withheld: Invalid tolerance interval (upper bound must exceed lower bound).',
+    };
+  }
 
   const isAsymmetric = Math.abs(Math.abs(lowerDelta) - Math.abs(upperDelta)) > 1e-6;
   const lowerBoundValue = m.targetValue + lowerDelta;
@@ -181,11 +274,23 @@ const STAGE_ORDER: Record<string, number> = {
 export function computeStageToStageShrinkage(
   initialMeas: Pick<
     Measurement,
-    'specimenId' | 'featureId' | 'measurementType' | 'physicalStage' | 'measuredValue' | 'unit'
+    | 'specimenId'
+    | 'specimenRecordId'
+    | 'featureId'
+    | 'measurementType'
+    | 'physicalStage'
+    | 'measuredValue'
+    | 'unit'
   >,
   subsequentMeas: Pick<
     Measurement,
-    'specimenId' | 'featureId' | 'measurementType' | 'physicalStage' | 'measuredValue' | 'unit'
+    | 'specimenId'
+    | 'specimenRecordId'
+    | 'featureId'
+    | 'measurementType'
+    | 'physicalStage'
+    | 'measuredValue'
+    | 'unit'
   >
 ): StageShrinkageResult {
   const stageA = initialMeas.physicalStage || 'Stage Unknown';
@@ -226,7 +331,13 @@ export function computeStageToStageShrinkage(
     };
   }
 
-  if (initialMeas.specimenId !== subsequentMeas.specimenId) {
+  const sameSpecimenCode = initialMeas.specimenId === subsequentMeas.specimenId;
+  const conflictingRecordId =
+    Boolean(initialMeas.specimenRecordId) &&
+    Boolean(subsequentMeas.specimenRecordId) &&
+    initialMeas.specimenRecordId !== subsequentMeas.specimenRecordId;
+
+  if (!sameSpecimenCode || conflictingRecordId) {
     return {
       canCompute: false,
       withheldReason: `Specimen mismatch (${initialMeas.specimenId} vs ${subsequentMeas.specimenId}). Stage-to-stage shrinkage must be computed on the same physical specimen.`,
@@ -434,34 +545,93 @@ export interface SpecimenAcceptanceEvaluation {
  *
  * Scientific Rigor Rules:
  * 1. Never marks a specimen 'Assembly Accepted' based solely on dimensional measurements.
- *    Requires an explicit physical AssemblyVerification record with verificationResult === 'PASS'.
- * 2. If required critical features are defined, checks that each critical feature has a verified
- *    measurement at its targetPhysicalStage.
+ *    Requires an explicit physical AssemblyVerification record with verificationResult === 'PASS'
+ *    or passFailStatus === 'PASS' (excluding NOT_TESTED / PENDING records).
+ * 2. Strict specimen attribution prevents cross-specimen measurement leakage.
+ * 3. If required critical features are defined, checks that each critical feature has a verified
+ *    measurement at its targetPhysicalStage (or stageTargets matching the specimen's stage).
  */
 export function evaluateSpecimenAcceptance(
-  specimen: Pick<Specimen, 'id' | 'specimenCode' | 'currentPhysicalStage'>,
+  specimen: Pick<Specimen, 'id' | 'specimenCode' | 'currentPhysicalStage'> & {
+    experimentId?: string;
+  },
   allMeasurements: Measurement[],
   allAssemblyVerifications: AssemblyVerification[],
   requiredFeatures: NodeFeatureDefinition[] = []
 ): SpecimenAcceptanceEvaluation {
-  const specMeas = allMeasurements.filter(
-    (m) =>
-      (m.specimenRecordId === specimen.id || m.specimenId === specimen.specimenCode) &&
+  const specMeas = allMeasurements.filter((m) => {
+    if (m.specimenRecordId && specimen.id) {
+      if (m.specimenRecordId !== specimen.id) return false;
+    } else if (m.specimenId !== specimen.specimenCode) {
+      return false;
+    }
+    if (specimen.experimentId && m.experimentId && m.experimentId !== specimen.experimentId) {
+      return false;
+    }
+    return (
       m.verifiedPhysicalMeasurement &&
       m.sourceType !== 'AI-Assisted Annotation' &&
       m.sourceType !== 'Computed'
-  );
+    );
+  });
 
-  const specAssm = allAssemblyVerifications.filter(
-    (a) => a.specimenRecordId === specimen.id || a.specimenId === specimen.specimenCode
-  );
+  const specAssm = allAssemblyVerifications.filter((a) => {
+    if (a.specimenRecordId && specimen.id) {
+      if (a.specimenRecordId !== specimen.id) return false;
+    } else if (
+      a.specimenId !== specimen.id &&
+      a.specimenId !== specimen.specimenCode &&
+      a.specimenCode !== specimen.specimenCode
+    ) {
+      return false;
+    }
+    if (specimen.experimentId && a.experimentId && a.experimentId !== specimen.experimentId) {
+      return false;
+    }
+    return true;
+  });
 
-  const hasPhysicalAssemblyFail = specAssm.some((a) => a.verificationResult === 'FAIL');
+  const isFailedAssembly = (a: AssemblyVerification): boolean =>
+    a.verificationResult === 'FAIL' ||
+    a.passFailStatus === 'FAIL' ||
+    a.physicalFitResult === 'Fail';
+
+  const isPassedAssembly = (a: AssemblyVerification): boolean =>
+    !isFailedAssembly(a) &&
+    a.verificationResult !== 'NOT_TESTED' &&
+    a.verificationResult !== 'PENDING' &&
+    a.passFailStatus !== 'NOT_TESTED' &&
+    a.passFailStatus !== 'PENDING' &&
+    a.physicalFitResult !== 'Untested' &&
+    a.fitClassification !== 'Not Tested' &&
+    (a.verificationResult === 'PASS' ||
+      a.passFailStatus === 'PASS' ||
+      a.physicalFitResult === 'Pass');
+
+  const hasPhysicalAssemblyFail = specAssm.some(isFailedAssembly);
   const hasPhysicalAssemblyPass =
-    !hasPhysicalAssemblyFail &&
-    specAssm.some((a) => a.verificationResult === 'PASS');
+    !hasPhysicalAssemblyFail && specAssm.some(isPassedAssembly);
 
-  if (specMeas.length === 0 && specAssm.length === 0) {
+  const executedAssmCount = specAssm.filter(
+    (a) => isFailedAssembly(a) || isPassedAssembly(a)
+  ).length;
+
+  const isFeatureCritical = (f: NodeFeatureDefinition): boolean =>
+    f.criticalForAssembly ?? f.assemblyCritical ?? false;
+
+  const getCanonicalFeatureKey = (f: NodeFeatureDefinition): string =>
+    f.featureCode || f.featureId || f.id;
+
+  const matchesFeature = (m: Measurement, f: NodeFeatureDefinition): boolean => {
+    if (!m.featureId) return false;
+    return (
+      m.featureId === f.id ||
+      m.featureId === f.featureCode ||
+      (Boolean(f.featureId) && m.featureId === f.featureId)
+    );
+  };
+
+  if (specMeas.length === 0 && executedAssmCount === 0) {
     return {
       specimenCode: specimen.specimenCode,
       status: 'Inspection Pending',
@@ -469,11 +639,11 @@ export function evaluateSpecimenAcceptance(
       evaluatedAtTargetStageCount: 0,
       failedFeatureIds: [],
       missingCriticalFeatureIds: requiredFeatures
-        .filter((f) => f.criticalForAssembly)
-        .map((f) => f.featureId),
+        .filter(isFeatureCritical)
+        .map(getCanonicalFeatureKey),
       hasPhysicalAssemblyPass: false,
       hasPhysicalAssemblyFail: false,
-      rationale: 'No verified physical measurements or assembly tests recorded yet.',
+      rationale: 'No verified physical measurements or executed assembly tests recorded yet.',
     };
   }
 
@@ -492,33 +662,83 @@ export function evaluateSpecimenAcceptance(
     };
   }
 
-  const criticalFeatures = requiredFeatures.filter((f) => f.criticalForAssembly);
+  const criticalFeatures = requiredFeatures.filter(isFeatureCritical);
   const missingCriticalFeatureIds: string[] = [];
   const failedFeatureIds: string[] = [];
   let evaluatedAtTargetStageCount = 0;
 
   if (criticalFeatures.length > 0) {
     for (const feat of criticalFeatures) {
-      const matchingStageMeas = specMeas.filter(
-        (m) =>
-          m.featureId === feat.featureId &&
-          (feat.targetPhysicalStage === 'Stage Unknown' ||
-            m.physicalStage === feat.targetPhysicalStage)
-      );
+      const featureKey = getCanonicalFeatureKey(feat);
+      const explicitTargetStage =
+        feat.targetPhysicalStage || feat.targetEvaluatedStage || 'Stage Unknown';
+
+      // Match measurements at the feature's target stage, or at a stage defined in feat.stageTargets matching specimen.currentPhysicalStage
+      const matchingStageMeas = specMeas.filter((m) => {
+        if (!matchesFeature(m, feat)) return false;
+        if (explicitTargetStage !== 'Stage Unknown' && m.physicalStage === explicitTargetStage) {
+          return true;
+        }
+        if (
+          feat.stageTargets &&
+          feat.stageTargets.length > 0 &&
+          m.physicalStage === specimen.currentPhysicalStage &&
+          feat.stageTargets.some((st) => st.stage === m.physicalStage)
+        ) {
+          return true;
+        }
+        return explicitTargetStage === 'Stage Unknown';
+      });
+
       if (matchingStageMeas.length === 0) {
-        missingCriticalFeatureIds.push(feat.featureId);
+        missingCriticalFeatureIds.push(featureKey);
       } else {
         for (const m of matchingStageMeas) {
+          const stageTargetSpec = feat.stageTargets?.find(
+            (st) => st.stage === m.physicalStage
+          );
+          const effectiveTargetStage = stageTargetSpec
+            ? stageTargetSpec.stage
+            : explicitTargetStage;
+
+          const effectiveTargetValue = stageTargetSpec
+            ? stageTargetSpec.targetValue
+            : m.targetValue;
+
+          const effectiveTol =
+            stageTargetSpec?.tolerancePlusMinus ??
+            feat.geometricToleranceDefinition?.tolerancePlusMinus ??
+            m.tolerance;
+
+          const effectiveLower =
+            m.lowerTolerance ??
+            m.toleranceLower ??
+            stageTargetSpec?.lowerTolerance ??
+            feat.geometricToleranceDefinition?.lowerTolerance ??
+            feat.toleranceLower;
+
+          const effectiveUpper =
+            m.upperTolerance ??
+            m.toleranceUpper ??
+            stageTargetSpec?.upperTolerance ??
+            feat.geometricToleranceDefinition?.upperTolerance ??
+            feat.toleranceUpper;
+
           const tolEval = evaluateFeatureMeasurementTolerance({
             ...m,
-            targetStage: feat.targetPhysicalStage,
-            toleranceLower: m.toleranceLower ?? feat.toleranceLower,
-            toleranceUpper: m.toleranceUpper ?? feat.toleranceUpper,
+            targetValue: effectiveTargetValue,
+            tolerance: effectiveTol,
+            targetStage: effectiveTargetStage,
+            lowerTolerance: effectiveLower,
+            upperTolerance: effectiveUpper,
+            expectedUnit:
+              feat.nominalDimensions?.unit ||
+              feat.geometricToleranceDefinition?.unit,
           });
           if (tolEval.stageCompatible) {
             evaluatedAtTargetStageCount++;
             if (tolEval.withinTolerance === false) {
-              failedFeatureIds.push(feat.featureId);
+              failedFeatureIds.push(featureKey);
             }
           }
         }
@@ -1293,7 +1513,8 @@ export function computeProductionEfficiency(
     record.calibrationDuration +
     record.downtime;
 
-  const dryingAndFiringDurationMin = record.dryingAndFiringDuration ?? 0;
+  const dryingAndFiringDurationMin =
+    record.dryingAndFiringDurationMin ?? record.dryingAndFiringDuration ?? 0;
   const completeProcessDurationMin = totalCycleDurationMin + dryingAndFiringDurationMin;
 
   const acceptedPerPrintHour =
